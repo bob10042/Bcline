@@ -118,11 +118,15 @@ export function toolSpecFunctionDefinition(tool: ClineToolSpec, context: SystemP
 		}
 	}
 
+	// OpenAI has a 64-character limit for tool names
+	// Truncate if necessary to comply with this limit
+	const toolName = tool.name.length > 64 ? tool.name.substring(0, 64) : tool.name
+
 	// Build the ChatCompletionTool object
 	const chatCompletionTool: OpenAITool = {
 		type: "function",
 		function: {
-			name: tool.name,
+			name: toolName,
 			description: replacer(tool.description, context),
 			strict: false,
 			parameters: {
@@ -291,8 +295,11 @@ export function toolSpecFunctionDeclarations(tool: ClineToolSpec, context: Syste
 		}
 	}
 
+	// Enforce reasonable tool name length limit (matching OpenAI's 64-char limit)
+	const toolName = tool.name.length > 64 ? tool.name.substring(0, 64) : tool.name
+
 	const googleTool: GoogleTool = {
-		name: tool.name,
+		name: toolName,
 		description: replacer(tool.description, context),
 		parameters: {
 			type: GoogleToolParamType.OBJECT,

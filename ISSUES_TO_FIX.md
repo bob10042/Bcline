@@ -54,7 +54,7 @@ This list contains 50 issues fetched from the main Cline repository that need to
 
 ### Model Support
 - [ ] **#7482**: Fix openrouter defaulting modelId when modelInfo is not present
-- [ ] **#7469**: Error cline latest version different models
+- [x] **#7469**: Error cline latest version different models (tool name length) ✅ FIXED
 - [ ] **#7422**: Request to add MiniMax M2 and Kimi K2 thinking to Fireworks AI provider
 - [x] **#7386**: Add kimi-k2-thinking and kimi-k2-thinking-turbo ✅ FIXED
 - [ ] **#7425**: Move native tools decision to per-model level
