@@ -18,7 +18,7 @@ This list contains 50 issues fetched from the main Cline repository that need to
 - [ ] **#7467**: Sonnet 4.5 with Claude Code provider - list_files missing path parameter
 - [ ] **#7464**: Error Anthropic API key is required when using LiteLLM proxy
 - [ ] **#7457**: SAPAICore Provider issue on Claude 4.5 sonnet with Orchestration Mode disabled
-- [ ] **#7400**: Fix SAP AI Core streaming inference requests fail
+- [x] **#7400**: Fix SAP AI Core streaming inference requests fail ✅ FIXED
 - [ ] **#7393**: Claude Code provider throws "tool_use is not supported yet" error
 
 ### Terminal & Command Issues
