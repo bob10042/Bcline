@@ -73,7 +73,7 @@ This list contains 50 issues fetched from the main Cline repository that need to
 
 ### Configuration & Settings
 - [ ] **#7474**: Github repo url is shown instead of MCP server name when switching to Staging
-- [ ] **#7405**: Why does using "@" to select a folder submit all the file content codes
+- [x] **#7405**: Why does using "@" to select a folder submit all the file content codes ✅ FIXED
 - [ ] **#7382**: Commit message only support top level repo
 
 ### Error Handling

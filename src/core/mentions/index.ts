@@ -342,29 +342,13 @@ async function getFileOrFolderContent(mentionPath: string, cwd: string): Promise
 		} else if (stats.isDirectory()) {
 			const entries = await fs.readdir(absPath, { withFileTypes: true })
 			let folderContent = ""
-			const fileContentPromises: Promise<string | undefined>[] = []
+			// Only show the directory structure, don't read file contents
+			// This prevents token limit issues when mentioning folders with many files
 			entries.forEach((entry, index) => {
 				const isLast = index === entries.length - 1
 				const linePrefix = isLast ? "└── " : "├── "
 				if (entry.isFile()) {
 					folderContent += `${linePrefix}${entry.name}\n`
-					const filePath = path.join(mentionPath, entry.name)
-					const absoluteFilePath = path.resolve(absPath, entry.name)
-					// const relativeFilePath = path.relative(cwd, absoluteFilePath);
-					fileContentPromises.push(
-						(async () => {
-							try {
-								const isBinary = await isBinaryFile(absoluteFilePath).catch(() => false)
-								if (isBinary) {
-									return undefined
-								}
-								const content = await extractTextFromFile(absoluteFilePath)
-								return `<file_content path="${filePath.toPosix()}">\n${content}\n</file_content>`
-							} catch (_error) {
-								return undefined
-							}
-						})(),
-					)
 				} else if (entry.isDirectory()) {
 					folderContent += `${linePrefix}${entry.name}/\n`
 					// not recursively getting folder contents
@@ -372,8 +356,7 @@ async function getFileOrFolderContent(mentionPath: string, cwd: string): Promise
 					folderContent += `${linePrefix}${entry.name}\n`
 				}
 			})
-			const fileContents = (await Promise.all(fileContentPromises)).filter((content) => content)
-			return `${folderContent}\n${fileContents.join("\n\n")}`.trim()
+			return folderContent.trim()
 		} else {
 			return `(Failed to read contents of ${mentionPath})`
 		}
