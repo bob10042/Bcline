@@ -13,7 +13,7 @@ import type { IFullyManagedTool } from "../ToolExecutorCoordinator"
 import type { ToolValidator } from "../ToolValidator"
 import type { TaskConfig } from "../types/TaskConfig"
 import type { StronglyTypedUIHelpers } from "../types/UIHelpers"
-import { applyModelContentFixes } from "../utils/ModelContentProcessor"
+import { applyModelCommandFixes } from "../utils/ModelContentProcessor"
 import { ToolResultUtils } from "../utils/ToolResultUtils"
 
 // Default timeout for commands in yolo mode and background exec mode
@@ -77,9 +77,10 @@ export class ExecuteCommandToolHandler implements IFullyManagedTool {
 			timeoutSeconds = parsed > 0 ? parsed : DEFAULT_COMMAND_TIMEOUT_SECONDS
 		}
 
-		// Pre-process command for certain models
-		if (config.api.getModel().id.includes("gemini")) {
-			command = applyModelContentFixes(command)
+		// Pre-process command for non-Claude models to fix escaped characters
+		const modelId = config.api.getModel().id
+		if (!modelId.includes("claude")) {
+			command = applyModelCommandFixes(command, modelId)
 		}
 
 		// Handle multi-workspace command execution

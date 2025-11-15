@@ -20,3 +20,17 @@ export function fixModelHtmlEscaping(text: string): string {
 export function removeInvalidChars(text: string): string {
 	return text.replace(/\uFFFD/g, "")
 }
+
+/**
+ * Fixes JSON-style escaped characters in command strings from AI models
+ * AI models often output commands with JSON-escaped quotes that need to be unescaped
+ * before being executed in a shell (e.g., `echo \"test\"` should become `echo "test"`)
+ * @param text Command string potentially containing JSON-style escaped characters
+ * @returns Command string with JSON escapes converted to normal characters
+ */
+export function fixCommandEscaping(text: string): string {
+	return text
+		.replace(/\\"/g, '"') // \" → "
+		.replace(/\\'/g, "'") // \' → '
+		.replace(/\\\\/g, "\\") // \\ → \
+}

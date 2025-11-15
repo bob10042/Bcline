@@ -21,8 +21,8 @@ This list contains 50 issues fetched from the main Cline repository that need to
 - [ ] **#7393**: Claude Code provider throws "tool_use is not supported yet" error
 
 ### Terminal & Command Issues
-- [ ] **#7483**: Fix: Terminal commands with double quotes broken in Background Exec mode
-- [ ] **#7470**: Terminal commands with double quotes are broken when "Terminal Execution Mode" is set to "Background Exec"
+- [x] **#7483**: Fix: Terminal commands with double quotes broken in Background Exec mode ✅ FIXED
+- [x] **#7470**: Terminal commands with double quotes are broken when "Terminal Execution Mode" is set to "Background Exec" ✅ FIXED (duplicate of #7483)
 - [ ] **#7379**: /smol command fails when context window is overfed during task execution
 
 ### Token & Usage Issues
