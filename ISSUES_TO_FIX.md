@@ -69,7 +69,7 @@ This list contains 50 issues fetched from the main Cline repository that need to
 - [ ] **#7461**: Add docker setup for CLI development
 - [ ] **#7384**: Harbor-compliant record functionality for cli and core
 - [ ] **#7458**: Reduce frontend Modules
-- [ ] **#7439**: Memoize credits history table component
+- [x] **#7439**: Memoize credits history table component ✅ FIXED
 
 ### Configuration & Settings
 - [ ] **#7474**: Github repo url is shown instead of MCP server name when switching to Staging
