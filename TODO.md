@@ -1,6 +1,6 @@
 # TODO - Remaining Bcline Issues
 
-## ✅ Completed (2/5)
+## ✅ Completed (3/5)
 
 - [x] **Issue #7470** - Terminal double quotes in Background Exec
   - Branch: `fix-terminal-double-quotes`
@@ -12,28 +12,15 @@
   - PR: https://github.com/cline/cline/pull/7484
   - Status: ✅ Submitted, awaiting review
 
+- [x] **Issue #7474** - MCP server names show as GitHub URLs in Staging
+  - Branch: `claude/work-in-progress-017n9F9ivbEfaZGo9XRX6xFx`
+  - Commit: `61425be`
+  - Status: ✅ Fixed, committed and pushed
+  - **Fix**: Added URL detection and extraction logic in `getMcpServerDisplayName()`
+
 ---
 
 ## 🔄 Next Up (1/5)
-
-- [ ] **Issue #7474** - MCP server names show as GitHub URLs in Staging
-  - **URL**: https://github.com/cline/cline/issues/7474
-  - **Difficulty**: ⭐⭐ MEDIUM
-  - **Estimate**: 30-45 minutes
-  - **Branch**: `fix-mcp-server-names` (create)
-
-  **Problem**: When switching to Staging, MCP server names display as repo URLs
-
-  **Files to Check**:
-  - MCP configuration UI
-  - Server state management
-  - Display name logic
-
-  **Expected Fix**: Use `server.name` instead of `server.url` for display
-
----
-
-## ⏭️ Remaining (2/5)
 
 - [ ] **Issue #7469** - Tool name exceeds 64-char limit
   - **URL**: https://github.com/cline/cline/issues/7469
@@ -50,6 +37,8 @@
   **Expected Fix**: Truncate or rename tool to ≤64 chars
 
 ---
+
+## ⏭️ Remaining (1/5)
 
 - [ ] **Issue #7476** - Windows ARM64 not supported (JetBrains)
   - **URL**: https://github.com/cline/cline/issues/7476
@@ -116,19 +105,19 @@ cat RESUME_SESSION.md
 ```
 ╔══════════════════════════════════════╗
 ║  BCLINE ISSUE FIXES                  ║
-║  Progress: 2 / 5 (40%)              ║
+║  Progress: 3 / 5 (60%)              ║
 ╚══════════════════════════════════════╝
 
-[████████░░░░░░░░░░░░] 40%
+[████████████░░░░░░░░] 60%
 
 ✅ Terminal quotes (PR #7483)
 ✅ Ollama cancel (PR #7484)
-🔄 MCP server names ← NEXT
-⏭️ Tool name length
+✅ MCP server names (Commit 61425be)
+🔄 Tool name length ← NEXT
 ⏭️ Windows ARM64
 ```
 
 ---
 
 **Last Updated**: 2025-11-15
-**Status**: Ready to continue with #7474
+**Status**: Issue #7474 completed! Next: #7469
