@@ -6,7 +6,7 @@ This list contains 50 issues fetched from the main Cline repository that need to
 
 ### Security & Critical Bugs
 - [x] **#7480**: [Aikido] Fix 2 security issues in tar-fs, js-yaml ✅ ALREADY FIXED
-- [ ] **#7431**: [Aikido] Fix 3 security issues in @modelcontextprotocol/sdk, tar
+- [x] **#7431**: [Aikido] Fix 3 security issues in @modelcontextprotocol/sdk, tar ✅ FIXED
 - [ ] **#7373**: Fix critical bug with token usage
 - [ ] **#7413**: Fix MCP Servers launching thousands of instances on Windows (crash)
 
