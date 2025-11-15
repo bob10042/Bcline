@@ -21,6 +21,7 @@ const IS_DEBUG_BUILD = process.env.IS_DEBUG_BUILD === "true"
 const TARGET_NODE_VERSION = "22.15.0"
 const TARGET_PLATFORMS = [
 	{ platform: "win32", arch: "x64", targetDir: "win-x64" },
+	{ platform: "win32", arch: "arm64", targetDir: "win-arm64" },
 	{ platform: "darwin", arch: "x64", targetDir: "darwin-x64" },
 	{ platform: "darwin", arch: "arm64", targetDir: "darwin-arm64" },
 	{ platform: "linux", arch: "x64", targetDir: "linux-x64" },
@@ -47,7 +48,7 @@ function getCurrentPlatform() {
 	} else if (platform === "linux") {
 		return "linux-x64"
 	} else if (platform === "win32") {
-		return "win-x64"
+		return arch === "arm64" ? "win-arm64" : "win-x64"
 	}
 	throw new Error(`Unsupported platform: ${platform}-${arch}`)
 }

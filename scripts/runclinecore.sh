@@ -36,6 +36,9 @@ elif [[ "$OS" == "darwin" && "$ARCH" == "arm64" ]]; then
 elif [[ "$OS" == *"mingw"* || "$OS" == *"cygwin"* || "$OS" == *"msys"* ]] && [[ "$ARCH" == "x86_64" || "$ARCH" == "amd64" ]]; then
     # Note: This script requires a bash-compatible environment on Windows (Git Bash, MSYS2, Cygwin)
     PLATFORM_NAME="win-x64"
+elif [[ "$OS" == *"mingw"* || "$OS" == *"cygwin"* || "$OS" == *"msys"* ]] && [[ "$ARCH" == "arm64" || "$ARCH" == "aarch64" ]]; then
+    # Windows ARM64 support (Surface Laptop, etc.)
+    PLATFORM_NAME="win-arm64"
 elif [[ "$OS" == "linux" && ("$ARCH" == "x86_64" || "$ARCH" == "amd64") ]]; then
     PLATFORM_NAME="linux-x64"
 else

@@ -50,6 +50,13 @@ const PLATFORMS = [
 		binaryPath: "rg.exe",
 		isZip: true,
 	},
+	{
+		name: "win-arm64",
+		archiveName: `ripgrep-${RIPGREP_VERSION}-aarch64-pc-windows-msvc.zip`,
+		url: `https://github.com/BurntSushi/ripgrep/releases/download/${RIPGREP_VERSION}/ripgrep-${RIPGREP_VERSION}-aarch64-pc-windows-msvc.zip`,
+		binaryPath: "rg.exe",
+		isZip: true,
+	},
 ]
 
 /**

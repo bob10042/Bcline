@@ -46,6 +46,14 @@ case "$os" in
         }
         platform="linux-$arch"
         ;;
+    mingw*|msys*|cygwin*)
+        # Windows (Git Bash, MSYS2, Cygwin)
+        [[ "$arch" == "x64" || "$arch" == "arm64" ]] || {
+            echo -e "${RED}${BOLD}ERROR${NC} ${RED}Unsupported architecture: $arch${NC}" >&2
+            exit 1
+        }
+        platform="win-$arch"
+        ;;
     *)
         echo -e "${RED}${BOLD}ERROR${NC} ${RED}Unsupported OS: $os${NC}" >&2
         exit 1

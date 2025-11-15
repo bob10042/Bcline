@@ -57,6 +57,14 @@ os=$(uname -s | tr '[:upper:]' '[:lower:]')
 arch=$(uname -m)
 if [[ "$arch" == "aarch64" ]]; then arch="arm64"; fi
 if [[ "$arch" == "x86_64" ]]; then arch="x64"; fi
+
+# Normalize OS for Windows environments
+case "$os" in
+    mingw*|msys*|cygwin*)
+        os="win"
+        ;;
+esac
+
 platform="$os-$arch"
 
 # Copy platform-specific native modules (like better-sqlite3)
