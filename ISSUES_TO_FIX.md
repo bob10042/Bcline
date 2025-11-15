@@ -5,7 +5,7 @@ This list contains 50 issues fetched from the main Cline repository that need to
 ## High Priority Issues
 
 ### Security & Critical Bugs
-- [ ] **#7480**: [Aikido] Fix 2 security issues in tar-fs, js-yaml
+- [x] **#7480**: [Aikido] Fix 2 security issues in tar-fs, js-yaml ✅ ALREADY FIXED
 - [ ] **#7431**: [Aikido] Fix 3 security issues in @modelcontextprotocol/sdk, tar
 - [ ] **#7373**: Fix critical bug with token usage
 - [ ] **#7413**: Fix MCP Servers launching thousands of instances on Windows (crash)
@@ -13,7 +13,8 @@ This list contains 50 issues fetched from the main Cline repository that need to
 ### API & Provider Issues
 - [x] **#7484**: Fix: Ollama API requests not cancelled when user clicks cancel ✅ FIXED
 - [x] **#7468**: Fix ollama API requests not cancelled ✅ FIXED (duplicate of #7484)
-- [ ] **#7481**: Fix Vercel provider token usage
+- [x] **#7482**: fix openrouter defaulting modelId when modelInfo is not present ✅ ALREADY FIXED
+- [x] **#7481**: Fix Vercel provider token usage ✅ FIXED
 - [ ] **#7467**: Sonnet 4.5 with Claude Code provider - list_files missing path parameter
 - [ ] **#7464**: Error Anthropic API key is required when using LiteLLM proxy
 - [ ] **#7457**: SAPAICore Provider issue on Claude 4.5 sonnet with Orchestration Mode disabled
