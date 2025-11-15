@@ -1377,6 +1377,15 @@ export class Task {
 			// can properly detect the abort state
 			this.taskState.abort = true
 
+			// Cancel ongoing API request if provider supports it (e.g., Ollama)
+			if (this.api && typeof (this.api as any).abortCurrentRequest === "function") {
+				try {
+					;(this.api as any).abortCurrentRequest()
+				} catch (error) {
+					Logger.error("Failed to abort API request during task abort", error)
+				}
+			}
+
 			// PHASE 3: Cancel any running hook execution
 			const activeHook = await this.getActiveHookExecution()
 			if (activeHook) {
@@ -3258,7 +3267,7 @@ export class Task {
 								globalWorkflowToggles,
 								this.ulid,
 								this.stateManager.getGlobalSettingsKey("focusChainSettings"),
-								this.useNativeToolCalls
+								this.useNativeToolCalls,
 							)
 
 							if (needsCheck) {

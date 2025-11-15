@@ -11,8 +11,8 @@ This list contains 50 issues fetched from the main Cline repository that need to
 - [ ] **#7413**: Fix MCP Servers launching thousands of instances on Windows (crash)
 
 ### API & Provider Issues
-- [ ] **#7484**: Fix: Ollama API requests not cancelled when user clicks cancel
-- [ ] **#7468**: Fix ollama API requests not cancelled
+- [x] **#7484**: Fix: Ollama API requests not cancelled when user clicks cancel ✅ FIXED
+- [x] **#7468**: Fix ollama API requests not cancelled ✅ FIXED (duplicate of #7484)
 - [ ] **#7481**: Fix Vercel provider token usage
 - [ ] **#7467**: Sonnet 4.5 with Claude Code provider - list_files missing path parameter
 - [ ] **#7464**: Error Anthropic API key is required when using LiteLLM proxy
