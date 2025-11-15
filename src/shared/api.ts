@@ -3451,7 +3451,15 @@ export const moonshotModels = {
 		inputPrice: 2,
 		outputPrice: 5,
 	},
-	"kimi-thinking-preview": {
+	"kimi-k2-thinking": {
+		maxTokens: 32_000,
+		contextWindow: 131_072,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 30,
+		outputPrice: 30,
+	},
+	"kimi-k2-thinking-turbo": {
 		maxTokens: 32_000,
 		contextWindow: 131_072,
 		supportsImages: false,
