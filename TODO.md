@@ -1,6 +1,6 @@
 # TODO - Remaining Bcline Issues
 
-## ✅ Completed (3/5)
+## ✅ Completed (4/5)
 
 - [x] **Issue #7470** - Terminal double quotes in Background Exec
   - Branch: `fix-terminal-double-quotes`
@@ -18,23 +18,11 @@
   - Status: ✅ Fixed, committed and pushed
   - **Fix**: Added URL detection and extraction logic in `getMcpServerDisplayName()`
 
----
-
-## 🔄 Next Up (1/5)
-
-- [ ] **Issue #7469** - Tool name exceeds 64-char limit
-  - **URL**: https://github.com/cline/cline/issues/7469
-  - **Difficulty**: ⭐⭐ MEDIUM
-  - **Estimate**: 20-30 minutes
-  - **Branch**: `fix-tool-name-length` (create)
-
-  **Problem**: `tools[30].name` is 68 chars, OpenAI limit is 64
-
-  **Files to Check**:
-  - Tool definitions
-  - Tool name generation
-
-  **Expected Fix**: Truncate or rename tool to ≤64 chars
+- [x] **Issue #7469** - Tool name exceeds 64-char limit
+  - Branch: `claude/work-in-progress-017n9F9ivbEfaZGo9XRX6xFx`
+  - Commit: `83db309`
+  - Status: ✅ Fixed, committed and pushed
+  - **Fix**: Added `createMcpToolName()` to enforce 64-char limit with proportional truncation
 
 ---
 
@@ -105,19 +93,19 @@ cat RESUME_SESSION.md
 ```
 ╔══════════════════════════════════════╗
 ║  BCLINE ISSUE FIXES                  ║
-║  Progress: 3 / 5 (60%)              ║
+║  Progress: 4 / 5 (80%)              ║
 ╚══════════════════════════════════════╝
 
-[████████████░░░░░░░░] 60%
+[████████████████░░░░] 80%
 
 ✅ Terminal quotes (PR #7483)
 ✅ Ollama cancel (PR #7484)
 ✅ MCP server names (Commit 61425be)
-🔄 Tool name length ← NEXT
-⏭️ Windows ARM64
+✅ Tool name length (Commit 83db309)
+⏭️ Windows ARM64 ← REMAINING
 ```
 
 ---
 
 **Last Updated**: 2025-11-15
-**Status**: Issue #7474 completed! Next: #7469
+**Status**: 4 of 5 issues completed! Remaining: #7476 (Windows ARM64)
