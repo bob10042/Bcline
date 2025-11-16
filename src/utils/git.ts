@@ -39,6 +39,22 @@ async function checkGitRepoHasCommits(cwd: string): Promise<boolean> {
 	}
 }
 
+/**
+ * Finds the git repository root directory from any path within the repository.
+ * This is essential for supporting git submodules and nested repositories.
+ *
+ * @param cwd - Any directory path within a git repository
+ * @returns The absolute path to the git repository root, or null if not in a git repo
+ */
+async function getGitRoot(cwd: string): Promise<string | null> {
+	try {
+		const { stdout } = await execAsync("git rev-parse --show-toplevel", { cwd })
+		return stdout.trim()
+	} catch (_error) {
+		return null
+	}
+}
+
 export async function searchCommits(query: string, cwd: string): Promise<GitCommit[]> {
 	try {
 		const isInstalled = await checkGitInstalled()
@@ -156,22 +172,26 @@ export async function getWorkingState(cwd: string): Promise<string> {
 			return "Git is not installed"
 		}
 
-		const isRepo = await checkGitRepo(cwd)
-		if (!isRepo) {
+		// Find the actual git repository root to support submodules and nested repos
+		const gitRoot = await getGitRoot(cwd)
+		if (!gitRoot) {
 			return "Not a git repository"
 		}
 
+		// Use the git root as the working directory for all git commands
+		const workingDir = gitRoot
+
 		// Get status of working directory
-		const { stdout: status } = await execAsync("git status --short", { cwd })
+		const { stdout: status } = await execAsync("git status --short", { cwd: workingDir })
 		if (!status.trim()) {
 			return "No changes in working directory"
 		}
 
 		// Check if repo has any commits before trying to diff against HEAD
 		let diff = ""
-		if (await checkGitRepoHasCommits(cwd)) {
+		if (await checkGitRepoHasCommits(workingDir)) {
 			// Only run git diff if there are commits
-			const { stdout: diffOutput } = await execAsync("git diff HEAD", { cwd })
+			const { stdout: diffOutput } = await execAsync("git diff HEAD", { cwd: workingDir })
 			diff = diffOutput
 		} else {
 			// No commits yet, use status output only
@@ -192,22 +212,26 @@ export async function getGitDiff(cwd: string, stagedOnly = false): Promise<strin
 			throw new Error("Git is not installed")
 		}
 
-		const isRepo = await checkGitRepo(cwd)
-		if (!isRepo) {
+		// Find the actual git repository root to support submodules and nested repos
+		const gitRoot = await getGitRoot(cwd)
+		if (!gitRoot) {
 			throw new Error("Not a git repository")
 		}
 
+		// Use the git root as the working directory for all git commands
+		const workingDir = gitRoot
+
 		let diff = ""
 		let command = "git --no-pager diff --staged --diff-filter=d"
-		if (await checkGitRepoHasCommits(cwd)) {
+		if (await checkGitRepoHasCommits(workingDir)) {
 			// Only run git diff if there are commits
-			const { stdout: staged } = await execAsync(command, { cwd })
+			const { stdout: staged } = await execAsync(command, { cwd: workingDir })
 			diff = staged.trim()
 		}
 
 		if (!stagedOnly && !diff) {
 			command = "git --no-pager diff HEAD --diff-filter=d"
-			const { stdout: unstaged } = await execAsync(command, { cwd })
+			const { stdout: unstaged } = await execAsync(command, { cwd: workingDir })
 			diff = unstaged.trim()
 		}
 
