@@ -3531,7 +3531,7 @@ export class Task {
 		}
 
 		// Add context window usage information (conditionally for some models)
-		const { contextWindow } = getContextWindowInfo(this.api)
+		const { contextWindow, maxAllowedSize } = getContextWindowInfo(this.api)
 
 		// Get the token count from the most recent API request to accurately reflect context management
 		const getTotalTokensFromApiReqMessage = (msg: ClineMessage) => {
@@ -3556,7 +3556,7 @@ export class Task {
 		})
 
 		const lastApiReqTotalTokens = lastApiReqMessage ? getTotalTokensFromApiReqMessage(lastApiReqMessage) : 0
-		const usagePercentage = Math.round((lastApiReqTotalTokens / contextWindow) * 100)
+		const usagePercentage = Math.round((lastApiReqTotalTokens / maxAllowedSize) * 100)
 
 		// Determine if context window info should be displayed
 		const currentModelId = this.api.getModel().id
@@ -3568,13 +3568,13 @@ export class Task {
 			const autoCondenseThreshold =
 				(this.stateManager.getGlobalSettingsKey("autoCondenseThreshold") as number | undefined) ?? 0.75
 			const displayThreshold = autoCondenseThreshold - 0.15
-			const currentUsageRatio = lastApiReqTotalTokens / contextWindow
+			const currentUsageRatio = lastApiReqTotalTokens / maxAllowedSize
 			shouldShowContextWindow = currentUsageRatio >= displayThreshold
 		}
 
 		if (shouldShowContextWindow) {
 			details += "\n\n# Context Window Usage"
-			details += `\n${lastApiReqTotalTokens.toLocaleString()} / ${(contextWindow / 1000).toLocaleString()}K tokens used (${usagePercentage}%)`
+			details += `\n${lastApiReqTotalTokens.toLocaleString()} / ${(maxAllowedSize / 1000).toLocaleString()}K tokens used (${usagePercentage}%)`
 		}
 
 		details += "\n\n# Current Mode"
