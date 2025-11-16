@@ -145,6 +145,31 @@ export class ClineToolSet {
 }
 
 /**
+ * Truncates an MCP tool name to fit within OpenAI's 64-character limit
+ * Format: serverUid + "0mcp0" + toolName, truncated intelligently if needed
+ */
+function truncateMcpToolName(serverUid: string, toolName: string): string {
+	const identifier = CLINE_MCP_TOOL_IDENTIFIER // "0mcp0" = 5 chars
+	const maxLength = 64 // OpenAI's limit
+	const fullName = serverUid + identifier + toolName
+
+	if (fullName.length <= maxLength) {
+		return fullName
+	}
+
+	// Need to truncate - distribute space between server and tool name
+	// Reserve 5 chars for identifier, split remaining between server and tool
+	const availableChars = maxLength - identifier.length
+	const halfChars = Math.floor(availableChars / 2)
+
+	// Truncate both parts proportionally
+	const truncatedServer = serverUid.slice(0, halfChars)
+	const truncatedTool = toolName.slice(0, availableChars - halfChars)
+
+	return truncatedServer + identifier + truncatedTool
+}
+
+/**
  * Convert an MCP server's tools to ClineToolSpec format
  */
 export function mcpToolToClineToolSpec(family: ModelFamily, server: McpServer): ClineToolSpec[] {
@@ -190,7 +215,8 @@ export function mcpToolToClineToolSpec(family: ModelFamily, server: McpServer): 
 			variant: family,
 			id: ClineDefaultTool.MCP_USE,
 			// We will use the identifier to reconstruct the MCP server and tool name later
-			name: server.uid + CLINE_MCP_TOOL_IDENTIFIER + mcpTool.name,
+			// Truncate to fit OpenAI's 64-character limit
+			name: truncateMcpToolName(server.uid || server.name, mcpTool.name),
 			description: `${server.name}: ${mcpTool.description || mcpTool.name}`,
 			parameters,
 		}

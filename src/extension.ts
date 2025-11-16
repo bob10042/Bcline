@@ -99,8 +99,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand(commands.PlusButton, async () => {
-			console.log("[DEBUG] plusButtonClicked")
-
 			const sidebarInstance = WebviewProvider.getInstance()
 			await sidebarInstance.controller.clearTask()
 			await sidebarInstance.controller.postStateToWebview()
@@ -205,8 +203,6 @@ export async function activate(context: vscode.ExtensionContext) {
 				await focusChatInput()
 
 				await sendAddToInputEvent(`Terminal output:\n\`\`\`\n${terminalContents}\n\`\`\``)
-
-				console.log("addSelectedTerminalOutputToChat", terminalContents, terminal.name)
 			} catch (error) {
 				// Ensure clipboard is restored even if an error occurs
 				await writeTextToClipboard(tempCopyBuffer)

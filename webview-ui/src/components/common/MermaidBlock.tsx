@@ -38,7 +38,7 @@ const MERMAID_THEME = {
 
 mermaid.initialize({
 	startOnLoad: false,
-	securityLevel: "loose",
+	securityLevel: "strict", // Changed from "loose" to prevent XSS attacks
 	theme: "dark",
 	themeVariables: {
 		...MERMAID_THEME,
