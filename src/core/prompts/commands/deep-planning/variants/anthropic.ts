@@ -30,7 +30,7 @@ export function createAnthropicVariant(): DeepPlanningVariant {
 function generateTemplate(): string {
 	const detectedShell = getShell()
 
-	// FIXME: detectedShell returns a non-string value on some Windows machines
+	// Safely detect PowerShell with type checking (getShell() can return non-string on some Windows machines)
 	let isPowerShell = false
 	try {
 		isPowerShell =
