@@ -2467,6 +2467,40 @@ export class Task {
 		// get previous api req's index to check token usage and determine if we need to truncate conversation history
 		const previousApiReqIndex = findLastIndex(this.messageStateHandler.getClineMessages(), (m) => m.say === "api_req_started")
 
+		// Pre-emptive context truncation for /smol and /compact commands (Issue #7379)
+		// When users explicitly request condensing via slash commands, we need to ensure
+		// there's enough context space for the condense instructions to reach the LLM
+		const userContentText = userContent
+			.filter((content) => content.type === "text")
+			.map((content) => (content as any).text)
+			.join(" ")
+		const hasCondenseCommand = /\/(?:smol|compact)\b/.test(userContentText)
+
+		if (hasCondenseCommand) {
+			// Check if context is near or at capacity
+			const isNearCapacity = this.contextManager.shouldCompactContextWindow(
+				this.messageStateHandler.getClineMessages(),
+				this.api,
+				previousApiReqIndex,
+				0.85, // 85% threshold - aggressive to ensure space for condense instructions
+			)
+
+			if (isNearCapacity) {
+				// Perform pre-emptive aggressive truncation to make room for the condense instructions
+				const apiConversationHistory = this.messageStateHandler.getApiConversationHistory()
+				this.taskState.conversationHistoryDeletedRange = this.contextManager.getNextTruncationRange(
+					apiConversationHistory,
+					this.taskState.conversationHistoryDeletedRange,
+					"quarter", // Aggressive truncation like error handler
+				)
+				await this.messageStateHandler.saveClineMessagesAndUpdateHistory()
+				await this.contextManager.triggerApplyStandardContextTruncationNoticeChange(
+					this.taskState.conversationHistoryDeletedRange,
+					`Pre-emptively truncated context to make room for /smol or /compact command`,
+				)
+			}
+		}
+
 		// Save checkpoint if this is the first API request
 		const isFirstRequest = this.messageStateHandler.getClineMessages().filter((m) => m.say === "api_req_started").length === 0
 
@@ -3267,7 +3301,7 @@ export class Task {
 								globalWorkflowToggles,
 								this.ulid,
 								this.stateManager.getGlobalSettingsKey("focusChainSettings"),
-								this.useNativeToolCalls
+								this.useNativeToolCalls,
 							)
 
 							if (needsCheck) {
