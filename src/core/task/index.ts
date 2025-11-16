@@ -3581,8 +3581,11 @@ export class Task {
 		const mode = this.stateManager.getGlobalSettingsKey("mode")
 		if (mode === "plan") {
 			details += "\nPLAN MODE\n" + formatResponse.planModeInstructions()
-		} else {
+		} else if (mode === "act") {
 			details += "\nACT MODE"
+		} else {
+			// Fallback for undefined or unexpected mode values
+			details += `\nUNKNOWN MODE (${mode ?? "undefined"})`
 		}
 
 		return `<environment_details>\n${details.trim()}\n</environment_details>`
