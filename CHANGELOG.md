@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.37.2
+
+### Critical Fixes
+
+- **Fix: File Truncation Bug (Issue #1)** - Preserve trailing newlines in FileEditProvider truncateDocument() method to prevent data loss during diff/edit operations. See CRITICAL_FIXES.md for details. (Commit: 8c4cd57)
+
+### Bug Fixes - Batch 4
+
+- Fix: 14 error handling and logging improvements
+  - 6 console.log → console.error conversions for proper error visibility
+  - 2 empty Error() messages now have descriptive text
+  - 1 JSON.parse crash fix for corrupted Jupyter notebooks
+- See BATCH4_BUGS.md for complete details
+
 ## 3.37.1
 
 - cf8dd1c: Comprehensive changes to better support GPT 5.1 - System prompt, tools, deep-planning, focus chain, etc.
