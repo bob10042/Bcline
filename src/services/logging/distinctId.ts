@@ -45,7 +45,7 @@ async function getMachineId(): Promise<string | undefined> {
 		const id = await machineId()
 		return id
 	} catch (error) {
-		console.log("Failed to get machine ID from node-machine-id", error)
+		console.error("Failed to get machine ID from node-machine-id:", error)
 		return undefined
 	}
 }

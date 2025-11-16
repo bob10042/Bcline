@@ -236,7 +236,7 @@ export class FocusChainManager {
 			return null
 		} catch (error) {
 			// File doesn't exist or can't be read, return null
-			console.log(`[Task ${this.taskId}] focus chain list: Could not load from markdown file: ${error}`)
+			console.error(`[Task ${this.taskId}] focus chain list: Could not load from markdown file:`, error)
 			return null
 		}
 	}
