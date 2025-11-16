@@ -92,18 +92,23 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 			}
 		}
 
-		// Remove any partial completion_result message that may exist
+		// Remove any partial OR duplicate completion_result messages that may exist
 		// Search backwards since other messages may have been inserted after the partial
+		// In long conversations, we need to ensure we don't have multiple completion messages
 		const clineMessages = config.messageState.getClineMessages()
-		const partialCompletionIndex = findLastIndex(
-			clineMessages,
-			(m) => m.partial === true && m.type === "say" && m.say === "completion_result",
-		)
-		if (partialCompletionIndex !== -1) {
-			const updatedMessages = [
-				...clineMessages.slice(0, partialCompletionIndex),
-				...clineMessages.slice(partialCompletionIndex + 1),
-			]
+		const completionIndicesToRemove: number[] = []
+
+		// Find all partial completion_result messages (should be removed)
+		for (let i = clineMessages.length - 1; i >= 0; i--) {
+			const m = clineMessages[i]
+			if (m.partial === true && m.type === "say" && m.say === "completion_result") {
+				completionIndicesToRemove.push(i)
+			}
+		}
+
+		// Remove the found messages
+		if (completionIndicesToRemove.length > 0) {
+			const updatedMessages = clineMessages.filter((_, index) => !completionIndicesToRemove.includes(index))
 			config.messageState.setClineMessages(updatedMessages)
 			await config.messageState.saveClineMessagesAndUpdateHistory()
 		}
