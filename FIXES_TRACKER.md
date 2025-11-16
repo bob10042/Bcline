@@ -2,14 +2,14 @@
 
 **Session Started**: 2025-11-16
 **Target**: Fix 20 issues from cline/cline repository
-**Progress**: 4 / 20 (20%)
+**Progress**: 5 / 20 (25%)
 
 ---
 
 ## Progress Overview
 
 ```
-[████░░░░░░░░░░░░░░░░] 20% (4/20 complete)
+[█████░░░░░░░░░░░░░░░] 25% (5/20 complete)
 ```
 
 ---
@@ -164,13 +164,14 @@
 ---
 
 ### 14. Issue #7383 - Context window usage mismatch
-- **Status**: ⏭️ TODO
+- **Status**: ✅ DONE
 - **Labels**: bug, VS Code
 - **Difficulty**: ⭐⭐⭐ HARD
 - **Estimate**: 1 hour
-- **Branch**: `fix-context-window-mismatch`
+- **Branch**: `claude/continue-next-tasks-017snsDg61FyKa5vVUSd4wpK`
+- **Commit**: 67f4dc2
 - **Description**: UI shows ~50% but API receives 100%
-- **Files to check**: Token counting, context management
+- **Solution**: Use maxAllowedSize instead of contextWindow for percentage calculations in both backend and frontend
 
 ---
 
@@ -245,9 +246,9 @@
 ## Statistics
 
 **Total Issues**: 20
-**Completed**: 4 (20%)
+**Completed**: 5 (25%)
 **In Progress**: 0
-**Remaining**: 16 (80%)
+**Remaining**: 15 (75%)
 
 **By Difficulty**:
 - ⭐ EASY: 2 issues (~30 min total)
@@ -297,11 +298,12 @@ gh pr list --repo cline/cline --author bob10042
 ---
 
 **Last Updated**: 2025-11-16
-**Current Task**: 4 fixes completed and pushed
+**Current Task**: 5 fixes completed and pushed
 **Completed Fixes**:
 - #7490 - VSCode theme warnings (commit b973e15)
 - #7469 - Tool name length (commit 9515cd4)
 - #7467 - Sonnet 4.5 missing path (commit ef237b7)
 - #7388 - Task Completed duplicate (commit 5177d47)
+- #7383 - Context window mismatch (commit 67f4dc2)
 
 All fixes pushed to branch: `claude/continue-next-tasks-017snsDg61FyKa5vVUSd4wpK`
