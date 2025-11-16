@@ -151,8 +151,25 @@ export async function activate(context: vscode.ExtensionContext) {
 		provideTextDocumentContent(uri: vscode.Uri): string {
 			return Buffer.from(uri.query, "base64").toString("utf-8")
 		}
+
+		// Provide empty event emitter to suppress semantic token warnings
+		onDidChange = new vscode.EventEmitter<vscode.Uri>().event
 	})()
 	context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider(DIFF_VIEW_URI_SCHEME, diffContentProvider))
+
+	// Register empty semantic tokens provider to suppress theme variable warnings for cline-diff documents
+	context.subscriptions.push(
+		vscode.languages.registerDocumentSemanticTokensProvider(
+			{ scheme: DIFF_VIEW_URI_SCHEME },
+			{
+				provideDocumentSemanticTokens: () => {
+					// Return empty semantic tokens to prevent theme variable warnings
+					return new vscode.SemanticTokens(new Uint32Array([]))
+				},
+			},
+			new vscode.SemanticTokensLegend([], []),
+		),
+	)
 
 	const handleUri = async (uri: vscode.Uri) => {
 		const url = decodeURIComponent(uri.toString())
