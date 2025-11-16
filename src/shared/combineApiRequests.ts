@@ -19,46 +19,63 @@ import { ClineMessage } from "./ExtensionMessage"
  * // Result: [{ type: "say", say: "api_req_started", text: '{"request":"GET /api/data","cost":0.005}', ts: 1000 }]
  */
 export function combineApiRequests(messages: ClineMessage[]): ClineMessage[] {
-	const combinedApiRequests: ClineMessage[] = []
+	// Use Map for O(1) lookups and proper pairing (Issue #7373)
+	// Fixes critical bug where API requests could be incorrectly combined or double-counted
+	const combinedRequests = new Map<number, ClineMessage>()
+	const processedFinished = new Set<number>() // Track which finished messages we've used
 
+	// First pass: Find all api_req_started messages and pair them with their api_req_finished
 	for (let i = 0; i < messages.length; i++) {
-		if (messages[i].type === "say" && messages[i].say === "api_req_started") {
-			const startedRequest = JSON.parse(messages[i].text || "{}")
-			let j = i + 1
+		const msg = messages[i]
+		if (msg.type === "say" && msg.say === "api_req_started" && msg.text) {
+			const startedData = JSON.parse(msg.text)
+			let foundFinished = false
 
-			while (j < messages.length) {
-				if (messages[j].type === "say" && messages[j].say === "api_req_finished") {
-					const finishedRequest = JSON.parse(messages[j].text || "{}")
-					const combinedRequest = {
-						...startedRequest,
-						...finishedRequest,
+			// Look for the matching api_req_finished message (should be after this one)
+			for (let j = i + 1; j < messages.length; j++) {
+				const finishMsg = messages[j]
+				if (
+					finishMsg.type === "say" &&
+					finishMsg.say === "api_req_finished" &&
+					finishMsg.text &&
+					!processedFinished.has(finishMsg.ts)
+				) {
+					// Found a matching finished message
+					const finishedData = JSON.parse(finishMsg.text)
+					const combinedData = {
+						...startedData,
+						...finishedData,
 					}
 
-					combinedApiRequests.push({
-						...messages[i],
-						text: JSON.stringify(combinedRequest),
+					combinedRequests.set(msg.ts, {
+						...msg,
+						text: JSON.stringify(combinedData),
 					})
 
-					i = j // Skip to the api_req_finished message
+					processedFinished.add(finishMsg.ts)
+					foundFinished = true
 					break
 				}
-				j++
+
+				// Stop if we hit another api_req_started (they should alternate)
+				if (finishMsg.type === "say" && finishMsg.say === "api_req_started") {
+					break
+				}
 			}
 
-			if (j === messages.length) {
-				// If no matching api_req_finished found, keep the original api_req_started
-				combinedApiRequests.push(messages[i])
+			// If no matching finished message found, keep the original started message
+			if (!foundFinished) {
+				combinedRequests.set(msg.ts, msg)
 			}
 		}
 	}
 
-	// Replace original api_req_started and remove api_req_finished
+	// Return filtered and mapped messages
 	return messages
 		.filter((msg) => !(msg.type === "say" && msg.say === "api_req_finished"))
 		.map((msg) => {
 			if (msg.type === "say" && msg.say === "api_req_started") {
-				const combinedRequest = combinedApiRequests.find((req) => req.ts === msg.ts)
-				return combinedRequest || msg
+				return combinedRequests.get(msg.ts) || msg
 			}
 			return msg
 		})
