@@ -74,7 +74,15 @@ export class FileEditProvider extends DiffViewProvider {
 		// Split the document into lines and keep only up to lineNumber
 		const lines = this.documentContent.split("\n")
 		if (lineNumber < lines.length) {
-			this.documentContent = lines.slice(0, lineNumber).join("\n")
+			const truncatedLines = lines.slice(0, lineNumber)
+			this.documentContent = truncatedLines.join("\n")
+
+			// Preserve trailing newline from originalContent if present
+			// This matches the logic in base class DiffViewProvider.update() at lines 216-223
+			const hasEmptyLastLine = this.originalContent?.endsWith("\n")
+			if (hasEmptyLastLine && truncatedLines[truncatedLines.length - 1] !== "") {
+				this.documentContent += "\n"
+			}
 		}
 	}
 
