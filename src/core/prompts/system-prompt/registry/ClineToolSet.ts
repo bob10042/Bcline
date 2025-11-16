@@ -186,11 +186,31 @@ export function mcpToolToClineToolSpec(family: ModelFamily, server: McpServer): 
 			})
 		}
 
+		// OpenAI enforces a 64-character limit on tool names
+		// Construct the name and truncate if necessary
+		const MAX_TOOL_NAME_LENGTH = 64
+		let toolName = server.uid + CLINE_MCP_TOOL_IDENTIFIER + mcpTool.name
+
+		if (toolName.length > MAX_TOOL_NAME_LENGTH) {
+			// Calculate available space for server.uid and mcpTool.name
+			const identifierLength = CLINE_MCP_TOOL_IDENTIFIER.length
+			const availableLength = MAX_TOOL_NAME_LENGTH - identifierLength
+
+			// Split available space: prioritize tool name, truncate server.uid if needed
+			const toolNameMaxLength = Math.floor(availableLength * 0.6) // 60% for tool name
+			const serverUidMaxLength = availableLength - toolNameMaxLength
+
+			const truncatedServerUid = server.uid.slice(0, serverUidMaxLength)
+			const truncatedMcpToolName = mcpTool.name.slice(0, toolNameMaxLength)
+
+			toolName = truncatedServerUid + CLINE_MCP_TOOL_IDENTIFIER + truncatedMcpToolName
+		}
+
 		return {
 			variant: family,
 			id: ClineDefaultTool.MCP_USE,
 			// We will use the identifier to reconstruct the MCP server and tool name later
-			name: server.uid + CLINE_MCP_TOOL_IDENTIFIER + mcpTool.name,
+			name: toolName,
 			description: `${server.name}: ${mcpTool.description || mcpTool.name}`,
 			parameters,
 		}
