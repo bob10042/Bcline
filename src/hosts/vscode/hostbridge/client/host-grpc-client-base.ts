@@ -89,7 +89,6 @@ export function createGrpcClient<T extends ProtoService>(service: T): GrpcClient
 						}
 						resolve(response)
 					} catch (e) {
-						console.log(`[DEBUG] gRPC host ERR to ${service.fullName}.${methodKey} req:${requestId} err:${e}`)
 						reject(e)
 					}
 				})
