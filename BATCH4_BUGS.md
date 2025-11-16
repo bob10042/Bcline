@@ -50,11 +50,19 @@
    - Fix: Add descriptive error message
    - Impact: Better debugging when diff parsing fails
 
+### Category 3: Missing Error Handling
+
+9. **src/integrations/misc/extract-text.ts:79**
+   - Issue: `JSON.parse()` without try-catch
+   - Fix: Wrap in try-catch with descriptive error message
+   - Impact: Prevents crash when parsing corrupted Jupyter notebooks
+
 ## Summary
 
-**Total Bugs Fixed in This Session: 13/20 target (65%)**
+**Total Bugs Fixed in This Session: 14/20 target (70%)**
 - ✅ First batch: 5 bugs (grpc-handler x2, ExternalDiffviewProvider, DiffViewProvider, tasks.ts parseInt)
 - ✅ Second batch: 8 bugs (6 console.log→error, 2 empty Error messages)
+- ✅ Third batch: 1 bug (Jupyter notebook JSON.parse crash)
 
 **Status**: Searched extensively for remaining bugs. The codebase is in excellent shape with:
 - Clean TypeScript compilation
@@ -74,5 +82,6 @@
 - [x] Issue #1: File truncation bug
 - [x] Batch 4a: 5 error logging fixes
 - [x] Batch 4b: 8 more bug fixes
+- [x] Batch 4c: 1 JSON parsing crash fix
 
-## Total Fixes: 46 bugs across all sessions ✅
+## Total Fixes: 47 bugs across all sessions ✅
