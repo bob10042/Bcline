@@ -2495,8 +2495,9 @@ export class Task {
 				)
 				await this.messageStateHandler.saveClineMessagesAndUpdateHistory()
 				await this.contextManager.triggerApplyStandardContextTruncationNoticeChange(
-					this.taskState.conversationHistoryDeletedRange,
-					`Pre-emptively truncated context to make room for /smol or /compact command`,
+					Date.now(),
+					await ensureTaskDirectoryExists(this.taskId),
+					apiConversationHistory,
 				)
 			}
 		}
