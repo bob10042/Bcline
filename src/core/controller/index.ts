@@ -818,7 +818,10 @@ export class Controller {
 			}
 		}
 		// if we tried to get a task that doesn't exist, remove it from state
-		// FIXME: this seems to happen sometimes when the json file doesn't save to disk for some reason
+		// This can happen if the JSON file wasn't flushed to disk properly during write
+		console.warn(
+			`Task ${id} found in state but file missing at ${historyItem ? path.join(HostProvider.get().globalStorageFsPath, "tasks", id) : "unknown"}. Cleaning up state.`,
+		)
 		await this.deleteTaskFromState(id)
 		throw new Error("Task not found")
 	}
