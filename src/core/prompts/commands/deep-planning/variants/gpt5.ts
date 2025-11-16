@@ -36,7 +36,9 @@ export function generateGPT51Template(focusChainEnabled: boolean): string {
 			detectedShell != null &&
 			typeof detectedShell === "string" &&
 			(detectedShell.toLowerCase().includes("powershell") || detectedShell.toLowerCase().includes("pwsh"))
-	} catch {}
+	} catch (error) {
+		console.error("Failed to detect PowerShell:", error)
+	}
 
 	return `<explicit_instructions type="deep-planning">
 Your task is to create a comprehensive implementation plan before writing any code. This process has five distinct steps that must be completed in order:
