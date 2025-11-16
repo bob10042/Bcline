@@ -102,7 +102,8 @@ export function isNextGenModelFamily(id: string): boolean {
 		isGemini2dot5ModelFamily(modelId) ||
 		isGrok4ModelFamily(modelId) ||
 		isGPT5ModelFamily(modelId) ||
-		isMinimaxModelFamily(modelId)
+		isMinimaxModelFamily(modelId) ||
+		isGLMModelFamily(modelId)
 	)
 }
 
