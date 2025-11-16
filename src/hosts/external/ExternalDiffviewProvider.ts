@@ -77,7 +77,7 @@ export class ExternalDiffViewProvider extends DiffViewProvider {
 		try {
 			return (await HostProvider.diff.getDocumentText({ diffId: this.activeDiffEditorId })).content
 		} catch (err) {
-			console.log("Error getting contents of diff editor", err)
+			console.error("Error getting contents of diff editor:", err)
 			return undefined
 		}
 	}
