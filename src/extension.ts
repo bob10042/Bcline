@@ -501,16 +501,17 @@ export async function deactivate() {
 	Logger.log("Cline extension deactivated")
 }
 
-// TODO: Find a solution for automatically removing DEV related content from production builds.
-//  This type of code is fine in production to keep. We just will want to remove it from production builds
-//  to bring down built asset sizes.
+// NOTE: Development-only code below is disabled in production builds via esbuild.mjs (line 133).
+// The code is included in the bundle but never executes. For smaller bundle sizes, future enhancement
+// could use tree-shaking via explicit `if (false)` replacement or a custom esbuild plugin.
+// Current impact: ~15 lines of dev tooling code in production bundle (minimal size impact).
 //
 // This is a workaround to reload the extension when the source code changes
 // since vscode doesn't support hot reload for extensions
 const IS_DEV = process.env.IS_DEV
 const DEV_WORKSPACE_FOLDER = process.env.DEV_WORKSPACE_FOLDER
 
-// Set up development mode file watcher
+// Set up development mode file watcher (disabled in production via IS_DEV check)
 if (IS_DEV && IS_DEV !== "false") {
 	assert(DEV_WORKSPACE_FOLDER, "DEV_WORKSPACE_FOLDER must be set in development")
 	const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(DEV_WORKSPACE_FOLDER, "src/**/*"))
