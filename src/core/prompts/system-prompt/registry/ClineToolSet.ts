@@ -225,7 +225,7 @@ export function mcpToolToClineToolSpec(family: ModelFamily, server: McpServer): 
 			const toolNameMaxLength = Math.floor(availableLength * 0.6) // 60% for tool name
 			const serverUidMaxLength = availableLength - toolNameMaxLength
 
-			const truncatedServerUid = server.uid.slice(0, serverUidMaxLength)
+			const truncatedServerUid = (server.uid || "").slice(0, serverUidMaxLength)
 			const truncatedMcpToolName = mcpTool.name.slice(0, toolNameMaxLength)
 
 			toolName = truncatedServerUid + CLINE_MCP_TOOL_IDENTIFIER + truncatedMcpToolName
