@@ -22,7 +22,7 @@ export function createGenericVariant(): DeepPlanningVariant {
 function generateTemplate(): string {
 	const detectedShell = getShell()
 
-	// FIXME: detectedShell returns a non-string value on some Windows machines
+	// Safely check for PowerShell with type validation
 	let isPowerShell = false
 	try {
 		isPowerShell =
