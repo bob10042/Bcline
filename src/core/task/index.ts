@@ -1864,7 +1864,29 @@ export class Task {
 					exitCodeMessage = `\nExit Code: ${exitCode} (Error - command failed)`
 				}
 			}
-			return [false, `Command executed.${exitCodeMessage}${result.length > 0 ? `\nOutput:\n${result}` : ""}`]
+
+			// Check for error patterns in output
+			let errorWarning = ""
+			const errorPatterns = [
+				/error:/i,
+				/\bfailed\b/i,
+				/npm ERR!/i,
+				/fatal:/i,
+				/exception/i,
+				/\[FAIL\]/i,
+				/command not found/i,
+				/zerodivisionerror/i,
+				/assertionerror/i,
+				/traceback/i,
+			]
+
+			const hasErrorPattern = errorPatterns.some((pattern) => pattern.test(result))
+			if (hasErrorPattern || (exitCode !== undefined && exitCode !== 0)) {
+				errorWarning =
+					"\n\n⚠️ ERROR DETECTED: The output contains error indicators. Please verify the command succeeded before proceeding."
+			}
+
+			return [false, `Command executed.${exitCodeMessage}${result.length > 0 ? `\nOutput:\n${result}` : ""}${errorWarning}`]
 		} else {
 			return [
 				false,
