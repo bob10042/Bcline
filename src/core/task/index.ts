@@ -1886,6 +1886,9 @@ export class Task {
 					"\n\n⚠️ ERROR DETECTED: The output contains error indicators. Please verify the command succeeded before proceeding."
 			}
 
+			// Store error warning as a command_output message so pre-completion validation can detect it
+			await this.say("command_output", errorWarning)
+
 			return [false, `Command executed.${exitCodeMessage}${result.length > 0 ? `\nOutput:\n${result}` : ""}${errorWarning}`]
 		} else {
 			return [
