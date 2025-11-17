@@ -1605,6 +1605,7 @@ export class Task {
 		let userFeedback: { text?: string; images?: string[]; files?: string[] } | undefined
 		let didContinue = false
 		let didCancelViaUi = false
+		let commandExitCode: number | null = null
 
 		// Chunked terminal output buffering
 		const CHUNK_LINE_COUNT = 20
@@ -1722,8 +1723,9 @@ export class Task {
 			}
 		}, COMPLETION_TIMEOUT_MS)
 
-		process.once("completed", async () => {
+		process.once("completed", async (exitCode?: number | null) => {
 			completed = true
+			commandExitCode = exitCode ?? null
 			//await this.say("shell_integration_warning_with_suggestion")
 			// Clear the completion timer
 			if (completionTimer) {
@@ -1853,6 +1855,13 @@ export class Task {
 		}
 
 		if (completed) {
+			// Check exit code - non-zero indicates failure
+			if (commandExitCode !== null && commandExitCode !== 0) {
+				return [
+					false,
+					`Command failed with exit code ${commandExitCode}.${result.length > 0 ? `\nOutput:\n${result}` : ""}`,
+				]
+			}
 			return [false, `Command executed.${result.length > 0 ? `\nOutput:\n${result}` : ""}`]
 		} else {
 			return [
@@ -3267,7 +3276,7 @@ export class Task {
 								globalWorkflowToggles,
 								this.ulid,
 								this.stateManager.getGlobalSettingsKey("focusChainSettings"),
-								this.useNativeToolCalls
+								this.useNativeToolCalls,
 							)
 
 							if (needsCheck) {

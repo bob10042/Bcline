@@ -83,8 +83,8 @@ class StandaloneTerminalProcess extends EventEmitter {
 					this.isHot = false
 				}
 
-				this.emit("completed")
-				this.emit("continue")
+				this.emit("completed", code)
+				this.emit("continue", code)
 			})
 
 			// Handle process errors

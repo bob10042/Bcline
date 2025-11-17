@@ -6,8 +6,8 @@ import { getLatestTerminalOutput } from "./get-latest-output"
 
 export interface TerminalProcessEvents {
 	line: [line: string]
-	continue: []
-	completed: []
+	continue: [exitCode?: number | null]
+	completed: [exitCode?: number | null]
 	error: [error: Error]
 	no_shell_integration: []
 }
@@ -24,6 +24,7 @@ export class TerminalProcess extends EventEmitter<TerminalProcessEvents> {
 	private lastRetrievedIndex: number = 0
 	isHot: boolean = false
 	private hotTimer: NodeJS.Timeout | null = null
+	private exitCode: number | null = null
 
 	async run(terminal: vscode.Terminal, command: string) {
 		// When command does not produce any output, we can assume the shell integration API failed and as a fallback return the current terminal contents
@@ -70,6 +71,12 @@ export class TerminalProcess extends EventEmitter<TerminalProcessEvents> {
 					const outputBetweenSequences = this.removeLastLineArtifacts(
 						data.match(/\]633;C([\s\S]*?)\]633;D/)?.[1] || "",
 					).trim()
+
+					// Extract exit code from ]633;D;exitcode sequence
+					const exitCodeMatch = data.match(/\]633;D;(\d+)/)
+					if (exitCodeMatch) {
+						this.exitCode = parseInt(exitCodeMatch[1], 10)
+					}
 
 					// Once we've retrieved any potential output between sequences, we can remove everything up to end of the last sequence
 					// https://code.visualstudio.com/docs/terminal/shell-integration#_vs-code-custom-sequences-osc-633-st
@@ -213,8 +220,8 @@ export class TerminalProcess extends EventEmitter<TerminalProcessEvents> {
 			}
 			this.isHot = false
 
-			this.emit("completed")
-			this.emit("continue")
+			this.emit("completed", this.exitCode)
+			this.emit("continue", this.exitCode)
 		} else {
 			// no shell integration detected, we'll fallback to running the command and capturing the terminal's output after some time
 			telemetryService.captureTerminalOutputFailure(TerminalOutputFailureReason.NO_SHELL_INTEGRATION)
@@ -234,8 +241,8 @@ export class TerminalProcess extends EventEmitter<TerminalProcessEvents> {
 			}
 			// For terminals without shell integration, we can't know when the command completes
 			// So we'll just emit the continue event after a delay
-			this.emit("completed")
-			this.emit("continue")
+			this.emit("completed", null)
+			this.emit("continue", null)
 			this.emit("no_shell_integration")
 			// setTimeout(() => {
 			// 	console.log(`Emitting continue after delay for terminal`)
