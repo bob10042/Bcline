@@ -1711,6 +1711,7 @@ export class Task {
 		})
 
 		let completed = false
+		let exitCode: number | undefined
 		let completionTimer: NodeJS.Timeout | null = null
 		const COMPLETION_TIMEOUT_MS = 6000 // 6 seconds
 
@@ -1722,8 +1723,9 @@ export class Task {
 			}
 		}, COMPLETION_TIMEOUT_MS)
 
-		process.once("completed", async () => {
+		process.once("completed", async (commandExitCode: number | undefined) => {
 			completed = true
+			exitCode = commandExitCode
 			//await this.say("shell_integration_warning_with_suggestion")
 			// Clear the completion timer
 			if (completionTimer) {
@@ -1853,7 +1855,16 @@ export class Task {
 		}
 
 		if (completed) {
-			return [false, `Command executed.${result.length > 0 ? `\nOutput:\n${result}` : ""}`]
+			// Include exit code information when available
+			let exitCodeMessage = ""
+			if (exitCode !== undefined) {
+				if (exitCode === 0) {
+					exitCodeMessage = "\nExit Code: 0 (Success)"
+				} else {
+					exitCodeMessage = `\nExit Code: ${exitCode} (Error - command failed)`
+				}
+			}
+			return [false, `Command executed.${exitCodeMessage}${result.length > 0 ? `\nOutput:\n${result}` : ""}`]
 		} else {
 			return [
 				false,
