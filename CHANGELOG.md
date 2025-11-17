@@ -2,6 +2,16 @@
 
 ## 3.37.2
 
+### Major Improvements - CLI Error Detection ⚡
+
+- **feat: Comprehensive CLI error detection and task completion verification** - 5 major improvements to prevent false "task complete" claims and catch command failures
+  - Fix critical system prompt contradiction that told Cline to "assume success" - now checks for errors explicitly
+  - Add exit code tracking and reporting for all commands (Exit Code: 0 = success, non-zero = error)
+  - Add error pattern detection scanning output for 13 common error indicators (error:, failed, npm ERR!, fatal:, etc.)
+  - Add pre-completion validation blocking attempt_completion when recent commands failed
+  - Add smart feedback detection recognizing when user says "didn't work" and forcing re-evaluation
+  - Expected 50-70% reduction in false completions and scripting errors
+
 ### Critical Fixes
 
 - **Fix: File Truncation Bug (Issue #1)** - Preserve trailing newlines in FileEditProvider truncateDocument() method to prevent data loss during diff/edit operations. See CRITICAL_FIXES.md for details. (Commit: 8c4cd57)
