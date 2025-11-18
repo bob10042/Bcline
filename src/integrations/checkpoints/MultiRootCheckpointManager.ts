@@ -148,28 +148,28 @@ export class MultiRootCheckpointManager implements ICheckpointManager {
 			}
 		})
 
-		// Don't await - let commits happen in background for better performance
-		// But do catch any errors to prevent unhandled promise rejections
+		// Await commit completion to ensure checkpoints are saved before returning
+		// Callers depend on this being complete (they use await saveCheckpoint())
 		const startTime = performance.now()
-		Promise.all(commitPromises)
-			.then((results) => {
-				const successful = results.filter((r) => r.success).length
-				const failed = results.length - successful
-				console.log(`[MultiRootCheckpointManager] Checkpoint complete: ${successful}/${results.length} successful`)
+		try {
+			const results = await Promise.all(commitPromises)
+			const successful = results.filter((r) => r.success).length
+			const failed = results.length - successful
+			console.log(`[MultiRootCheckpointManager] Checkpoint complete: ${successful}/${results.length} successful`)
 
-				// TELEMETRY: Track checkpoint commits
-				telemetryService.captureMultiRootCheckpoint(
-					this.taskId,
-					"committed",
-					results.length,
-					successful,
-					failed,
-					performance.now() - startTime,
-				)
-			})
-			.catch((error) => {
-				console.error("[MultiRootCheckpointManager] Unexpected error during checkpoint:", error)
-			})
+			// TELEMETRY: Track checkpoint commits
+			telemetryService.captureMultiRootCheckpoint(
+				this.taskId,
+				"committed",
+				results.length,
+				successful,
+				failed,
+				performance.now() - startTime,
+			)
+		} catch (error) {
+			console.error("[MultiRootCheckpointManager] Unexpected error during checkpoint:", error)
+			throw error
+		}
 	}
 
 	/**

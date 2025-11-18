@@ -37,6 +37,13 @@ export class ClineIgnoreController {
 	 * Set up the file watcher for .clineignore changes
 	 */
 	private setupFileWatcher(): void {
+		// Dispose existing watcher to prevent memory leaks from accumulated event listeners
+		// This can happen if initialize() is called multiple times (e.g., startTask then resumeTask)
+		if (this.fileWatcher) {
+			this.fileWatcher.close()
+			this.fileWatcher = undefined
+		}
+
 		const ignorePath = path.join(this.cwd, ".clineignore")
 
 		this.fileWatcher = chokidar.watch(ignorePath, {

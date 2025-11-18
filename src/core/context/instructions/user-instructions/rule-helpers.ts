@@ -179,12 +179,21 @@ export async function ensureLocalClineDirExists(clinerulePath: string, defaultRu
 				await fs.unlink(tempPath).catch(() => {}) // delete backup
 
 				return false // conversion successful with no errors
-			} catch (_conversionError) {
+			} catch (conversionError) {
+				console.error(`Failed to convert ${clinerulePath} to directory:`, conversionError)
 				// attempt to restore backup on conversion failure
 				try {
 					await fs.rm(clinerulePath, { recursive: true, force: true }).catch(() => {})
 					await fs.rename(tempPath, clinerulePath) // restore backup
-				} catch (_restoreError) {}
+					console.log(`Successfully restored backup from ${tempPath} to ${clinerulePath}`)
+				} catch (restoreError) {
+					console.error(
+						`CRITICAL: Failed to restore backup after conversion failure. ` +
+							`Your data may be at ${tempPath} (backup file). ` +
+							`Please manually restore it to ${clinerulePath}`,
+						restoreError,
+					)
+				}
 				return true // in either case here we consider this an error
 			}
 		}

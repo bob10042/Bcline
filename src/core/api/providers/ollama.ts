@@ -57,18 +57,24 @@ export class OllamaHandler implements ApiHandler {
 		this.currentAbortController = new AbortController()
 		const abortController = this.currentAbortController
 
+		// Store timeout ID and abort handler to clear them later and prevent memory leaks
+		let timeoutId: NodeJS.Timeout | undefined
+		let abortHandler: (() => void) | undefined
+
 		try {
 			// Create a promise that rejects after timeout
 			const timeoutMs = this.options.requestTimeoutMs || 30000
 			const timeoutPromise = new Promise<never>((_, reject) => {
-				setTimeout(() => reject(new Error(`Ollama request timed out after ${timeoutMs / 1000} seconds`)), timeoutMs)
+				timeoutId = setTimeout(
+					() => reject(new Error(`Ollama request timed out after ${timeoutMs / 1000} seconds`)),
+					timeoutMs,
+				)
 			})
 
 			// Create a promise that rejects on abort
 			const abortPromise = new Promise<never>((_, reject) => {
-				abortController.signal.addEventListener("abort", () => {
-					reject(new Error("Ollama request cancelled by user"))
-				})
+				abortHandler = () => reject(new Error("Ollama request cancelled by user"))
+				abortController.signal.addEventListener("abort", abortHandler)
 			})
 
 			// Create the actual API request promise
@@ -131,6 +137,14 @@ export class OllamaHandler implements ApiHandler {
 			console.error(`Ollama API error (${statusCode || "unknown"}): ${errorMessage}`)
 			throw error
 		} finally {
+			// Clean up timeout to prevent memory leaks
+			if (timeoutId) {
+				clearTimeout(timeoutId)
+			}
+			// Clean up abort event listener to prevent memory leaks
+			if (abortHandler && abortController) {
+				abortController.signal.removeEventListener("abort", abortHandler)
+			}
 			// Clean up abort controller
 			this.currentAbortController = null
 		}
