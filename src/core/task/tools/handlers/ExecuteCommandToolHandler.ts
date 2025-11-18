@@ -5,6 +5,7 @@ import { showSystemNotification } from "@integrations/notifications"
 import { COMMAND_REQ_APP_STRING } from "@shared/combineCommandSequences"
 import { ClineAsk } from "@shared/ExtensionMessage"
 import { arePathsEqual } from "@utils/path"
+import { getCommandSeparator, getShell } from "@utils/shell"
 import { telemetryService } from "@/services/telemetry"
 import { ClineDefaultTool } from "@/shared/tools"
 import type { ToolResponse } from "../../index"
@@ -235,8 +236,11 @@ export class ExecuteCommandToolHandler implements IFullyManagedTool {
 		// If executionDir is different from cwd, prepend cd command
 		let finalCommand: string = actualCommand
 		if (executionDir !== config.cwd) {
-			// Use && to chain commands so they run in sequence
-			finalCommand = `cd "${executionDir}" && ${actualCommand}`
+			// Get the current shell to determine the proper command separator
+			// PowerShell 5.1 doesn't support &&, so we use ; for all PowerShell versions
+			const currentShell = getShell()
+			const separator = getCommandSeparator(currentShell)
+			finalCommand = `cd "${executionDir}" ${separator} ${actualCommand}`
 		}
 
 		const [userRejected, result] = await config.callbacks.executeCommandTool(finalCommand, timeoutSeconds)

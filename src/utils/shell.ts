@@ -338,3 +338,32 @@ export function getShell(): string {
 	// On macOS/Linux, fallback to a POSIX shell - This is the behavior of our old shell detection method.
 	return SHELL_PATHS.FALLBACK
 }
+
+// -----------------------------------------------------
+// 6) Shell Type Detection and Command Chaining Utilities
+// -----------------------------------------------------
+
+/**
+ * Determines if a given shell path is PowerShell (any version).
+ * This checks for both PowerShell 7+ (pwsh.exe) and legacy PowerShell (powershell.exe).
+ *
+ * @param shellPath The shell path to check
+ * @returns true if the shell is PowerShell, false otherwise
+ */
+export function isPowerShell(shellPath: string): boolean {
+	const normalizedPath = shellPath.toLowerCase()
+	return normalizedPath.includes("powershell") || normalizedPath.includes("pwsh")
+}
+
+/**
+ * Gets the appropriate command separator for chaining commands based on the shell type.
+ *
+ * PowerShell 5.1 (legacy) does NOT support the && operator - it was only added in PowerShell 7.
+ * To ensure compatibility with both PowerShell versions, we use semicolon (;) for all PowerShell.
+ *
+ * @param shellPath The shell path to determine the separator for
+ * @returns The command separator: ';' for PowerShell, '&&' for other shells
+ */
+export function getCommandSeparator(shellPath: string): string {
+	return isPowerShell(shellPath) ? ";" : "&&"
+}
