@@ -1889,10 +1889,13 @@ export class Task {
 
 			const hasErrorPattern = errorPatterns.some((pattern) => pattern.test(result))
 			// Trigger warning if: error patterns found, non-zero exit code, or exit code not captured with minimal output
+			// Also check exit code message for error indicators (to catch cases where exit code is in message but not in result)
+			const exitCodeHasError = exitCodeMessage.toLowerCase().includes("error")
 			if (
 				hasErrorPattern ||
 				(exitCode !== undefined && exitCode !== 0) ||
-				(exitCode === undefined && result.trim().length < 100)
+				(exitCode === undefined && result.trim().length < 100) ||
+				exitCodeHasError
 			) {
 				errorWarning =
 					"\n\n⚠️ ERROR DETECTED: The output contains error indicators or exit code verification failed. Please verify the command succeeded before proceeding."
