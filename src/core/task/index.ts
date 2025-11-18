@@ -1863,6 +1863,9 @@ export class Task {
 				} else {
 					exitCodeMessage = `\nExit Code: ${exitCode} (Error - command failed)`
 				}
+			} else {
+				// When exit code is not captured, note it explicitly
+				exitCodeMessage = "\nExit Code: Not captured (shell integration may be unavailable)"
 			}
 
 			// Check for error patterns in output
@@ -1878,16 +1881,27 @@ export class Task {
 				/zerodivisionerror/i,
 				/assertionerror/i,
 				/traceback/i,
+				/Write-Error/i,
+				/WriteErrorException/i,
+				/CommandNotFoundException/i,
+				/PathNotFound/i,
 			]
 
 			const hasErrorPattern = errorPatterns.some((pattern) => pattern.test(result))
-			if (hasErrorPattern || (exitCode !== undefined && exitCode !== 0)) {
+			// Trigger warning if: error patterns found, non-zero exit code, or exit code not captured with minimal output
+			if (
+				hasErrorPattern ||
+				(exitCode !== undefined && exitCode !== 0) ||
+				(exitCode === undefined && result.trim().length < 100)
+			) {
 				errorWarning =
-					"\n\n⚠️ ERROR DETECTED: The output contains error indicators. Please verify the command succeeded before proceeding."
+					"\n\n⚠️ ERROR DETECTED: The output contains error indicators or exit code verification failed. Please verify the command succeeded before proceeding."
 			}
 
 			// Store error warning as a command_output message so pre-completion validation can detect it
-			await this.say("command_output", errorWarning)
+			if (errorWarning) {
+				await this.say("command_output", errorWarning)
+			}
 
 			return [false, `Command executed.${exitCodeMessage}${result.length > 0 ? `\nOutput:\n${result}` : ""}${errorWarning}`]
 		} else {
