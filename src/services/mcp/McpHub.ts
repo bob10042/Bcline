@@ -291,20 +291,24 @@ export class McpHub {
 					const stderrStream = transport.stderr
 					if (stderrStream) {
 						stderrStream.on("data", async (data: Buffer) => {
-							const output = data.toString()
-							const isInfoLog = !/\berror\b/i.test(output)
+							try {
+								const output = data.toString()
+								const isInfoLog = !/\berror\b/i.test(output)
 
-							if (isInfoLog) {
-								console.log(`Server "${name}" info:`, output)
-							} else {
-								console.error(`Server "${name}" stderr:`, output)
-								const connection = this.findConnection(name, source)
-								if (connection) {
-									this.appendErrorMessage(connection, output)
-									if (connection.server.status === "disconnected") {
-										await this.notifyWebviewOfServerChanges()
+								if (isInfoLog) {
+									console.log(`Server "${name}" info:`, output)
+								} else {
+									console.error(`Server "${name}" stderr:`, output)
+									const connection = this.findConnection(name, source)
+									if (connection) {
+										this.appendErrorMessage(connection, output)
+										if (connection.server.status === "disconnected") {
+											await this.notifyWebviewOfServerChanges()
+										}
 									}
 								}
+							} catch (error) {
+								console.error(`Error handling stderr for MCP server "${name}":`, error)
 							}
 						})
 					} else {

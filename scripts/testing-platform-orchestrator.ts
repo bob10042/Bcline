@@ -117,9 +117,16 @@ function stopServer(server: ChildProcess): Promise<void> {
 	return new Promise((resolve) => {
 		if (!server.pid) return resolve()
 
+		// Register exit listener BEFORE killing to avoid race condition
+		// where process exits before listener is attached
+		server.once("exit", () => resolve())
+
 		kill(server.pid, "SIGINT", (err) => {
-			if (err) console.warn("Failed to kill server process:", err)
-			server.once("exit", () => resolve())
+			if (err) {
+				console.warn("Failed to kill server process:", err)
+				// If kill fails, resolve anyway to prevent hanging
+				resolve()
+			}
 		})
 	})
 }

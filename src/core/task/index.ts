@@ -1767,7 +1767,7 @@ export class Task {
 					didContinue = true
 					process.continue()
 
-					// Clear all our timers
+					// Clear all our timers to prevent memory leaks
 					if (chunkTimer) {
 						clearTimeout(chunkTimer)
 						chunkTimer = null
@@ -1775,6 +1775,10 @@ export class Task {
 					if (completionTimer) {
 						clearTimeout(completionTimer)
 						completionTimer = null
+					}
+					if (bufferStuckTimer) {
+						clearTimeout(bufferStuckTimer)
+						bufferStuckTimer = null
 					}
 
 					// Process any output we captured before timeout
@@ -3267,7 +3271,7 @@ export class Task {
 								globalWorkflowToggles,
 								this.ulid,
 								this.stateManager.getGlobalSettingsKey("focusChainSettings"),
-								this.useNativeToolCalls
+								this.useNativeToolCalls,
 							)
 
 							if (needsCheck) {

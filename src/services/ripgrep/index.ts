@@ -69,6 +69,7 @@ async function execRipgrep(args: string[]): Promise<string> {
 
 		let output = ""
 		let lineCount = 0
+		let killedDueToLimit = false
 		const maxLines = MAX_RESULTS * 5 // limiting ripgrep output with max lines since there's no other way to limit results. it's okay that we're outputting as json, since we're parsing it line by line and ignore anything that's not part of a match. This assumes each result is at most 5 lines.
 
 		rl.on("line", (line) => {
@@ -77,7 +78,11 @@ async function execRipgrep(args: string[]): Promise<string> {
 				lineCount++
 			} else {
 				rl.close()
-				rgProcess.kill()
+				// Only kill if process is still alive
+				if (rgProcess.pid && !rgProcess.killed) {
+					killedDueToLimit = true
+					rgProcess.kill()
+				}
 			}
 		})
 
@@ -86,7 +91,8 @@ async function execRipgrep(args: string[]): Promise<string> {
 			errorOutput += data.toString()
 		})
 		rl.on("close", () => {
-			if (errorOutput) {
+			// If we killed the process due to hitting the limit, don't treat stderr as an error
+			if (errorOutput && !killedDueToLimit) {
 				reject(new Error(`ripgrep process error: ${errorOutput}`))
 			} else {
 				resolve(output)
