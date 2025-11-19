@@ -4,9 +4,11 @@ import os from "os"
 import * as path from "path"
 import { HostProvider } from "@/hosts/host-provider"
 import { ShowMessageType } from "@/shared/proto/host/window"
+import type { HistoryItem } from "@/shared/HistoryItem"
 import { openFile } from "./open-file"
 
-export async function downloadTask(dateTs: number, conversationHistory: Anthropic.MessageParam[]) {
+export async function downloadTask(historyItem: HistoryItem, conversationHistory: Anthropic.MessageParam[]) {
+	const dateTs = historyItem.ts
 	// File name
 	const date = new Date(dateTs)
 	const month = date.toLocaleString("en-US", { month: "short" }).toLowerCase()
@@ -20,8 +22,39 @@ export async function downloadTask(dateTs: number, conversationHistory: Anthropi
 	hours = hours ? hours : 12 // the hour '0' should be '12'
 	const fileName = `cline_task_${month}-${day}-${year}_${hours}-${minutes}-${seconds}-${ampm}.md`
 
-	// Generate markdown
-	const markdownContent = conversationHistory
+	// Generate metadata header
+	const totalTokens = historyItem.tokensIn + historyItem.tokensOut
+	const cacheTokens = (historyItem.cacheWrites || 0) + (historyItem.cacheReads || 0)
+	const metadataHeader = [
+		`# Task Metadata`,
+		``,
+		`**Task:** ${historyItem.task || "Untitled Task"}`,
+		`**Date:** ${date.toLocaleString("en-US", { dateStyle: "full", timeStyle: "long" })}`,
+		historyItem.modelId ? `**Model:** ${historyItem.modelId}` : null,
+		``,
+		`## Token Usage`,
+		``,
+		`- **Input Tokens:** ${historyItem.tokensIn.toLocaleString()}`,
+		`- **Output Tokens:** ${historyItem.tokensOut.toLocaleString()}`,
+		`- **Total Tokens:** ${totalTokens.toLocaleString()}`,
+		historyItem.cacheWrites ? `- **Cache Write Tokens:** ${historyItem.cacheWrites.toLocaleString()}` : null,
+		historyItem.cacheReads ? `- **Cache Read Tokens:** ${historyItem.cacheReads.toLocaleString()}` : null,
+		cacheTokens > 0 ? `- **Total Cache Tokens:** ${cacheTokens.toLocaleString()}` : null,
+		``,
+		`## Cost`,
+		``,
+		`- **Total Cost:** $${historyItem.totalCost.toFixed(4)}`,
+		``,
+		`---`,
+		``,
+		`# Conversation History`,
+		``,
+	]
+		.filter((line) => line !== null)
+		.join("\n")
+
+	// Generate conversation markdown
+	const conversationContent = conversationHistory
 		.map((message) => {
 			const role = message.role === "user" ? "**User:**" : "**Assistant:**"
 			const content = Array.isArray(message.content)
@@ -30,6 +63,9 @@ export async function downloadTask(dateTs: number, conversationHistory: Anthropi
 			return `${role}\n\n${content}\n\n`
 		})
 		.join("---\n\n")
+
+	// Combine metadata header with conversation
+	const markdownContent = metadataHeader + conversationContent
 
 	// Prompt user for save location
 	const saveResponse = await HostProvider.window.showSaveDialog({
