@@ -16,6 +16,10 @@
 
 - **Fix: File Truncation Bug (Issue #1)** - Preserve trailing newlines in FileEditProvider truncateDocument() method to prevent data loss during diff/edit operations. See CRITICAL_FIXES.md for details. (Commit: 8c4cd57)
 
+### Enhancements
+
+- **Enhancement: Export chat with cost tracking (cline/cline#1555)** - Exported markdown files now include comprehensive metadata header with task details, token usage breakdown (input/output/cache), and total API costs. Users can now track and analyze expenses per conversation. (Commit: 7b13ca2)
+
 ### Bug Fixes - Batch 4
 
 - Fix: 14 error handling and logging improvements
