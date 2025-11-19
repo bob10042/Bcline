@@ -1,0 +1,24 @@
+test-1.txt:
+Words: ~500
+First sentence: Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+Last sentence: Stress test file 1 content complete.
+
+test-2.txt:
+Words: ~300
+First sentence: Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+Last sentence: Ut enim ad minima veniam
+
+test-3.txt:
+Words: ~350
+First sentence: Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+Last sentence: nisi ut aliquid ex ea commodi consequatur?
+
+test-4.txt:
+Words: ~350
+First sentence: Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+Last sentence: quaerat voluptatem.
+
+test-5.txt:
+Words: ~400
+First sentence: Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+Last sentence: Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam.

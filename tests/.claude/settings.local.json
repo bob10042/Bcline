@@ -1,0 +1,36 @@
+{
+	"permissions": {
+		"allow": [
+			"Bash(git fetch:*)",
+			"Bash(npm install)",
+			"Bash(npm run build:webview:*)",
+			"Bash(npm run dev:*)",
+			"Bash(npx vsce package --help:*)",
+			"Bash(node_modules/grpc-tools/bin/protoc.exe --version)",
+			"Bash(wsl --status)",
+			"Bash(gh release list:*)",
+			"Bash(gh release download:*)",
+			"Bash(rm:*)",
+			"Bash(cmd.exe /c \"node_modules\\grpc-tools\\bin\\protoc.exe --version\")",
+			"Bash(powershell.exe -Command \"cd ''C:\\Users\\bob43\\Downloads\\Bcline''; npm run protos\")",
+			"Bash(powershell.exe -Command \"dumpbin /dependents node_modules\\grpc-tools\\bin\\protoc.exe 2>&1 | Select-String -Pattern ''''.dll''''\")",
+			"Bash(curl:*)",
+			"Bash(unzip:*)",
+			"Bash(cp:*)",
+			"Bash(npx vsce package)",
+			"Bash(code --install-extension:*)",
+			"Bash(git checkout:*)",
+			"Bash(git stash:*)",
+			"Bash(git pull:*)",
+			"Bash(npm run build:*)",
+			"Bash(cat:*)",
+			"Bash(sed:*)",
+			"Bash(code --list-extensions:*)",
+			"Bash(npm run compile:*)",
+			"Bash(npm run package:*)",
+			"Bash(npm run:*)"
+		],
+		"deny": [],
+		"ask": []
+	}
+}

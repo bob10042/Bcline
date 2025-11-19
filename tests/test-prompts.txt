@@ -1,0 +1,8 @@
+Run the v2 prompt tests again
+What files are in the current directory?
+Create a Python file that prints Hello World
+Run pytest on all test files
+Show me the git status
+What is the current branch?
+List all files matching *.test.ts
+Search for the word "TODO" in all TypeScript files

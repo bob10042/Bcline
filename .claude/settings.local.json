@@ -1,0 +1,31 @@
+{
+	"permissions": {
+		"allow": [
+			"Bash(nonexistentcommand --help:*)",
+			"Bash(cat:*)",
+			"Bash(git add:*)",
+			"Bash(npx playwright install:*)",
+			"Bash(git fetch:*)",
+			"Bash(git pull:*)",
+			"Bash(git checkout:*)",
+			"Bash(npm install)",
+			"Bash(npm run package:*)",
+			"Bash(npm test:*)",
+			"Bash(git commit:*)",
+			"Bash(npx ts-node:*)",
+			"Bash(bash UPDATE_EXTENSION.sh:*)",
+			"Bash(git stash:*)",
+			"Bash(git merge:*)",
+			"Bash(code --install-extension:*)",
+			"Bash(code --list-extensions:*)",
+			"Bash(npm run clean:build:*)",
+			"Bash(npx vsce package)",
+			"Bash(git log:*)",
+			"Bash(git cherry-pick:*)",
+			"Bash(git rm:*)",
+			"Bash(git diff:*)"
+		],
+		"deny": [],
+		"ask": []
+	}
+}

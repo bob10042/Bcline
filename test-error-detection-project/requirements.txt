@@ -1,0 +1,3 @@
+pytest==7.4.3
+nonexistent-package-xyz123==1.0.0
+another-fake-package==2.0.0

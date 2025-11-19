@@ -51,6 +51,11 @@ export function isGemini2dot5ModelFamily(id: string): boolean {
 	return modelId.includes("gemini-2.5")
 }
 
+export function isGemini3ModelFamily(id: string): boolean {
+	const modelId = normalize(id)
+	return modelId.includes("gemini3") || modelId.includes("gemini-3")
+}
+
 export function isGrok4ModelFamily(id: string): boolean {
 	const modelId = normalize(id)
 	return modelId.includes("grok-4")
@@ -100,6 +105,7 @@ export function isNextGenModelFamily(id: string): boolean {
 	return (
 		isClaude4PlusModelFamily(modelId) ||
 		isGemini2dot5ModelFamily(modelId) ||
+		isGemini3ModelFamily(modelId) ||
 		isGrok4ModelFamily(modelId) ||
 		isGPT5ModelFamily(modelId) ||
 		isMinimaxModelFamily(modelId) ||

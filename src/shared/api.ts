@@ -240,6 +240,7 @@ export interface ModelInfo {
 		maxBudget?: number // Max allowed thinking budget tokens
 		outputPrice?: number // Output price per million tokens when budget > 0
 		outputPriceTiers?: PriceTier[] // Optional: Tiered output price when budget > 0
+		thinkingLevel?: "low" | "high" // Optional: preset thinking level
 	}
 	supportsGlobalEndpoint?: boolean // Whether the model supports a global endpoint with Vertex AI
 	cacheWritesPrice?: number
@@ -252,6 +253,7 @@ export interface ModelInfo {
 		cacheWritesPrice?: number
 		cacheReadsPrice?: number
 	}[]
+	temperature?: number
 }
 
 export interface OpenAiCompatibleModelInfo extends ModelInfo {
