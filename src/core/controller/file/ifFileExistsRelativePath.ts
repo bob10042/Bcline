@@ -15,7 +15,7 @@ export async function ifFileExistsRelativePath(_controller: Controller, request:
 
 	if (!workspacePath) {
 		// If no workspace is open, return false
-		console.error("Error in ifFileExistsRelativePath: No workspace path available") // TODO
+		console.error("ifFileExistsRelativePath: No workspace path available. Cannot check file:", request.value || "")
 		return BooleanResponse.create({ value: false })
 	}
 

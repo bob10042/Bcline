@@ -132,7 +132,7 @@ export class MultiRootCheckpointManager implements ICheckpointManager {
 
 		console.log(`[MultiRootCheckpointManager] Creating checkpoint across ${this.trackers.size} workspace(s)`)
 
-		// Commit all roots in parallel (fire and forget for performance)
+		// Commit all roots in parallel with proper error tracking
 		const commitPromises = Array.from(this.trackers.entries()).map(async ([path, tracker]) => {
 			try {
 				const hash = await tracker.commit()

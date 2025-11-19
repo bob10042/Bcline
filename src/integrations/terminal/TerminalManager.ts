@@ -77,6 +77,7 @@ declare module "vscode" {
 			cwd?: vscode.Uri
 			executeCommand?: (command: string) => {
 				read: () => AsyncIterable<string>
+				exitCode?: number | undefined
 			}
 		}
 	}
@@ -410,19 +411,67 @@ export class TerminalManager {
 		this.subagentTerminalOutputLineLimit = limit
 	}
 
+	/**
+	 * Detects error patterns in terminal output
+	 * @param output The terminal output text to scan
+	 * @returns Object containing whether errors were detected and matched patterns
+	 */
+	private detectErrorPatterns(output: string): { hasErrors: boolean; errorPatterns: string[] } {
+		const errorPatterns = [
+			/error:/i,
+			/\bfailed\b/i,
+			/npm ERR!/,
+			/fatal:/i,
+			/exception/i,
+			/\[FAIL\]/,
+			/command not found/i,
+			/no such file or directory/i,
+			/permission denied/i,
+			/cannot find/i,
+			/undefined is not/i,
+			/cannot read propert/i,
+			/syntax error/i,
+		]
+
+		const detectedPatterns: string[] = []
+
+		for (const pattern of errorPatterns) {
+			if (pattern.test(output)) {
+				detectedPatterns.push(pattern.toString())
+			}
+		}
+
+		return {
+			hasErrors: detectedPatterns.length > 0,
+			errorPatterns: detectedPatterns,
+		}
+	}
+
 	public processOutput(outputLines: string[], overrideLimit?: number, isSubagentCommand?: boolean): string {
 		const limit = isSubagentCommand
 			? overrideLimit !== undefined
 				? overrideLimit
 				: this.subagentTerminalOutputLineLimit
 			: this.terminalOutputLineLimit
+		let output: string
 		if (outputLines.length > limit) {
 			const halfLimit = Math.floor(limit / 2)
 			const start = outputLines.slice(0, halfLimit)
 			const end = outputLines.slice(outputLines.length - halfLimit)
-			return `${start.join("\n")}\n... (output truncated) ...\n${end.join("\n")}`.trim()
+			output = `${start.join("\n")}\n... (output truncated) ...\n${end.join("\n")}`.trim()
+		} else {
+			output = outputLines.join("\n").trim()
 		}
-		return outputLines.join("\n").trim()
+
+		// Detect error patterns in the output
+		const errorAnalysis = this.detectErrorPatterns(output)
+
+		// If errors detected, append a warning notice
+		if (errorAnalysis.hasErrors) {
+			output += `\n\n⚠️ ERROR DETECTED: The output contains error indicators. Please verify the command succeeded before proceeding.`
+		}
+
+		return output
 	}
 
 	setDefaultTerminalProfile(profileId: string): { closedCount: number; busyTerminals: TerminalInfo[] } {

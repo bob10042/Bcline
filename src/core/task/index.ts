@@ -1711,6 +1711,7 @@ export class Task {
 		})
 
 		let completed = false
+		let exitCode: number | undefined
 		let completionTimer: NodeJS.Timeout | null = null
 		const COMPLETION_TIMEOUT_MS = 6000 // 6 seconds
 
@@ -1722,8 +1723,9 @@ export class Task {
 			}
 		}, COMPLETION_TIMEOUT_MS)
 
-		process.once("completed", async () => {
+		process.once("completed", async (commandExitCode: number | undefined) => {
 			completed = true
+			exitCode = commandExitCode
 			//await this.say("shell_integration_warning_with_suggestion")
 			// Clear the completion timer
 			if (completionTimer) {
@@ -1853,7 +1855,41 @@ export class Task {
 		}
 
 		if (completed) {
-			return [false, `Command executed.${result.length > 0 ? `\nOutput:\n${result}` : ""}`]
+			// Include exit code information when available
+			let exitCodeMessage = ""
+			if (exitCode !== undefined) {
+				if (exitCode === 0) {
+					exitCodeMessage = "\nExit Code: 0 (Success)"
+				} else {
+					exitCodeMessage = `\nExit Code: ${exitCode} (Error - command failed)`
+				}
+			}
+
+			// Check for error patterns in output
+			let errorWarning = ""
+			const errorPatterns = [
+				/error:/i,
+				/\bfailed\b/i,
+				/npm ERR!/i,
+				/fatal:/i,
+				/exception/i,
+				/\[FAIL\]/i,
+				/command not found/i,
+				/zerodivisionerror/i,
+				/assertionerror/i,
+				/traceback/i,
+			]
+
+			const hasErrorPattern = errorPatterns.some((pattern) => pattern.test(result))
+			if (hasErrorPattern || (exitCode !== undefined && exitCode !== 0)) {
+				errorWarning =
+					"\n\n⚠️ ERROR DETECTED: The output contains error indicators. Please verify the command succeeded before proceeding."
+			}
+
+			// Store error warning as a command_output message so pre-completion validation can detect it
+			await this.say("command_output", errorWarning)
+
+			return [false, `Command executed.${exitCodeMessage}${result.length > 0 ? `\nOutput:\n${result}` : ""}${errorWarning}`]
 		} else {
 			return [
 				false,
@@ -2466,6 +2502,41 @@ export class Task {
 
 		// get previous api req's index to check token usage and determine if we need to truncate conversation history
 		const previousApiReqIndex = findLastIndex(this.messageStateHandler.getClineMessages(), (m) => m.say === "api_req_started")
+
+		// Pre-emptive context truncation for /smol and /compact commands (Issue #7379)
+		// When users explicitly request condensing via slash commands, we need to ensure
+		// there's enough context space for the condense instructions to reach the LLM
+		const userContentText = userContent
+			.filter((content) => content.type === "text")
+			.map((content) => (content as any).text)
+			.join(" ")
+		const hasCondenseCommand = /\/(?:smol|compact)\b/.test(userContentText)
+
+		if (hasCondenseCommand) {
+			// Check if context is near or at capacity
+			const isNearCapacity = this.contextManager.shouldCompactContextWindow(
+				this.messageStateHandler.getClineMessages(),
+				this.api,
+				previousApiReqIndex,
+				0.85, // 85% threshold - aggressive to ensure space for condense instructions
+			)
+
+			if (isNearCapacity) {
+				// Perform pre-emptive aggressive truncation to make room for the condense instructions
+				const apiConversationHistory = this.messageStateHandler.getApiConversationHistory()
+				this.taskState.conversationHistoryDeletedRange = this.contextManager.getNextTruncationRange(
+					apiConversationHistory,
+					this.taskState.conversationHistoryDeletedRange,
+					"quarter", // Aggressive truncation like error handler
+				)
+				await this.messageStateHandler.saveClineMessagesAndUpdateHistory()
+				await this.contextManager.triggerApplyStandardContextTruncationNoticeChange(
+					Date.now(),
+					await ensureTaskDirectoryExists(this.taskId),
+					apiConversationHistory,
+				)
+			}
+		}
 
 		// Save checkpoint if this is the first API request
 		const isFirstRequest = this.messageStateHandler.getClineMessages().filter((m) => m.say === "api_req_started").length === 0
@@ -3267,7 +3338,7 @@ export class Task {
 								globalWorkflowToggles,
 								this.ulid,
 								this.stateManager.getGlobalSettingsKey("focusChainSettings"),
-								this.useNativeToolCalls
+								this.useNativeToolCalls,
 							)
 
 							if (needsCheck) {
@@ -3534,7 +3605,7 @@ export class Task {
 		}
 
 		// Add context window usage information (conditionally for some models)
-		const { contextWindow } = getContextWindowInfo(this.api)
+		const { contextWindow, maxAllowedSize } = getContextWindowInfo(this.api)
 
 		// Get the token count from the most recent API request to accurately reflect context management
 		const getTotalTokensFromApiReqMessage = (msg: ClineMessage) => {
@@ -3559,7 +3630,7 @@ export class Task {
 		})
 
 		const lastApiReqTotalTokens = lastApiReqMessage ? getTotalTokensFromApiReqMessage(lastApiReqMessage) : 0
-		const usagePercentage = Math.round((lastApiReqTotalTokens / contextWindow) * 100)
+		const usagePercentage = Math.round((lastApiReqTotalTokens / maxAllowedSize) * 100)
 
 		// Determine if context window info should be displayed
 		const currentModelId = this.api.getModel().id
@@ -3571,21 +3642,24 @@ export class Task {
 			const autoCondenseThreshold =
 				(this.stateManager.getGlobalSettingsKey("autoCondenseThreshold") as number | undefined) ?? 0.75
 			const displayThreshold = autoCondenseThreshold - 0.15
-			const currentUsageRatio = lastApiReqTotalTokens / contextWindow
+			const currentUsageRatio = lastApiReqTotalTokens / maxAllowedSize
 			shouldShowContextWindow = currentUsageRatio >= displayThreshold
 		}
 
 		if (shouldShowContextWindow) {
 			details += "\n\n# Context Window Usage"
-			details += `\n${lastApiReqTotalTokens.toLocaleString()} / ${(contextWindow / 1000).toLocaleString()}K tokens used (${usagePercentage}%)`
+			details += `\n${lastApiReqTotalTokens.toLocaleString()} / ${(maxAllowedSize / 1000).toLocaleString()}K tokens used (${usagePercentage}%)`
 		}
 
 		details += "\n\n# Current Mode"
 		const mode = this.stateManager.getGlobalSettingsKey("mode")
 		if (mode === "plan") {
 			details += "\nPLAN MODE\n" + formatResponse.planModeInstructions()
-		} else {
+		} else if (mode === "act") {
 			details += "\nACT MODE"
+		} else {
+			// Fallback for undefined or unexpected mode values
+			details += `\nUNKNOWN MODE (${mode ?? "undefined"})`
 		}
 
 		return `<environment_details>\n${details.trim()}\n</environment_details>`

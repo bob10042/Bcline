@@ -91,7 +91,7 @@ async function handleUnaryRequest(
 		})
 	} catch (error) {
 		// Send error response
-		console.log("Protobus error:", error)
+		console.error("Protobus error:", error)
 		await postMessageToWebview({
 			type: "grpc_response",
 			grpc_response: {
@@ -142,7 +142,7 @@ async function handleStreamingRequest(
 		// The stream will be closed when the client disconnects or when the service explicitly ends it
 	} catch (error) {
 		// Send error response
-		console.log("Protobus error:", error)
+		console.error("Protobus error:", error)
 		await postMessageToWebview({
 			type: "grpc_response",
 			grpc_response: {

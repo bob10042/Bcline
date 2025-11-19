@@ -123,9 +123,26 @@ const ContextWindow: React.FC<ContextWindowProgressProps> = ({
 		if (!contextWindow) {
 			return null
 		}
+
+		// Calculate maxAllowedSize (matches logic in context-window-utils.ts)
+		let maxAllowedSize: number
+		switch (contextWindow) {
+			case 64_000: // deepseek models
+				maxAllowedSize = contextWindow - 27_000
+				break
+			case 128_000: // most models
+				maxAllowedSize = contextWindow - 30_000
+				break
+			case 200_000: // claude models
+				maxAllowedSize = contextWindow - 40_000
+				break
+			default:
+				maxAllowedSize = Math.max(contextWindow - 40_000, contextWindow * 0.8)
+		}
+
 		return {
-			percentage: (lastApiReqTotalTokens / contextWindow) * 100,
-			max: contextWindow,
+			percentage: (lastApiReqTotalTokens / maxAllowedSize) * 100,
+			max: maxAllowedSize,
 			used: lastApiReqTotalTokens,
 		}
 	}, [contextWindow, lastApiReqTotalTokens])

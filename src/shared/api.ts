@@ -485,7 +485,7 @@ export const claudeCodeModels = {
 // AWS Bedrock
 // https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html
 export type BedrockModelId = keyof typeof bedrockModels
-export const bedrockDefaultModelId: BedrockModelId = "anthropic.claude-sonnet-4-20250514-v1:0" // TODO: update to 4-5
+export const bedrockDefaultModelId: BedrockModelId = "anthropic.claude-sonnet-4-5-20250929-v1:0"
 export const bedrockModels = {
 	"anthropic.claude-sonnet-4-5-20250929-v1:0": {
 		maxTokens: 8192,
@@ -827,7 +827,7 @@ export const OPENROUTER_PROVIDER_PREFERENCES: Record<string, { order: string[]; 
 // https://cloud.google.com/vertex-ai/generative-ai/docs/partner-models/use-claude
 // https://cloud.google.com/vertex-ai/generative-ai/pricing#partner-models
 export type VertexModelId = keyof typeof vertexModels
-export const vertexDefaultModelId: VertexModelId = "claude-sonnet-4@20250514" // TODO: update to 4-5
+export const vertexDefaultModelId: VertexModelId = "claude-sonnet-4-5@20250929"
 export const vertexModels = {
 	"claude-sonnet-4-5@20250929": {
 		maxTokens: 8192,

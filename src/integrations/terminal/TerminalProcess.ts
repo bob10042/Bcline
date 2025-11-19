@@ -7,7 +7,7 @@ import { getLatestTerminalOutput } from "./get-latest-output"
 export interface TerminalProcessEvents {
 	line: [line: string]
 	continue: []
-	completed: []
+	completed: [exitCode: number | undefined]
 	error: [error: Error]
 	no_shell_integration: []
 }
@@ -24,6 +24,7 @@ export class TerminalProcess extends EventEmitter<TerminalProcessEvents> {
 	private lastRetrievedIndex: number = 0
 	isHot: boolean = false
 	private hotTimer: NodeJS.Timeout | null = null
+	private exitCode: number | undefined = undefined
 
 	/**
 	 * Determines appropriate timeout based on command type
@@ -275,6 +276,9 @@ export class TerminalProcess extends EventEmitter<TerminalProcessEvents> {
 
 			this.emitRemainingBufferIfListening()
 
+			// Capture exit code from shell integration
+			this.exitCode = execution.exitCode
+
 			// the command process is finished, let's check the output to see if we need to use the terminal capture fallback
 			if (!this.fullOutput.trim()) {
 				// No output captured via shell integration, trying fallback
@@ -299,7 +303,7 @@ export class TerminalProcess extends EventEmitter<TerminalProcessEvents> {
 			}
 			this.isHot = false
 
-			this.emit("completed")
+			this.emit("completed", this.exitCode)
 			this.emit("continue")
 		} else {
 			// no shell integration detected, we'll fallback to running the command and capturing the terminal's output after some time
@@ -320,9 +324,10 @@ export class TerminalProcess extends EventEmitter<TerminalProcessEvents> {
 			} else {
 				telemetryService.captureTerminalExecution(false, "none")
 			}
-			// For terminals without shell integration, we can't know when the command completes
+			// For terminals without shell integration, we can't know when the command completes or get exit code
 			// So we'll just emit the continue event after a delay
-			this.emit("completed")
+			this.exitCode = undefined
+			this.emit("completed", this.exitCode)
 			this.emit("continue")
 			this.emit("no_shell_integration")
 			// setTimeout(() => {
@@ -356,6 +361,10 @@ export class TerminalProcess extends EventEmitter<TerminalProcessEvents> {
 			this.buffer = ""
 			this.lastRetrievedIndex = this.fullOutput.length
 		}
+	}
+
+	getExitCode(): number | undefined {
+		return this.exitCode
 	}
 
 	continue() {

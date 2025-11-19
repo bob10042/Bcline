@@ -812,9 +812,22 @@ export class SapAiCoreHandler implements ApiHandler {
 		_model: { id: SapAiCoreModelId; info: ModelInfo },
 	): AsyncGenerator<any, void, unknown> {
 		function toStrictJson(str: string): string {
-			// Wrap it in parentheses so JS will treat it as an expression
-			const obj = new Function("return " + str)()
-			return JSON.stringify(obj)
+			// Parse as JSON5-like object literal and convert to strict JSON
+			try {
+				// Try standard JSON parse first
+				const obj = JSON.parse(str)
+				return JSON.stringify(obj)
+			} catch {
+				// If that fails, wrap in parentheses and try JSON5 parsing
+				// This is safer than using Function constructor
+				try {
+					const obj = JSON.parse(str.replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":'))
+					return JSON.stringify(obj)
+				} catch {
+					// Last resort: return original string
+					return str
+				}
+			}
 		}
 
 		const _usage = { input_tokens: 0, output_tokens: 0 }

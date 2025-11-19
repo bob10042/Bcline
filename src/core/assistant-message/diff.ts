@@ -729,7 +729,7 @@ class NewFileContentConstructor {
 			lineLimit = this.pendingNonStandardLines.length
 		}
 		if (!lineLimit) {
-			throw new Error()
+			throw new Error("tryFixReplaceBlock: lineLimit must be greater than 0")
 		}
 		const replaceBeginTagRegexp = /^[=]{3,}$/
 		const replaceBeginTagIndex = this.findLastMatchingLineIndex(replaceBeginTagRegexp, lineLimit)
@@ -758,7 +758,7 @@ class NewFileContentConstructor {
 			lineLimit = this.pendingNonStandardLines.length
 		}
 		if (!lineLimit) {
-			throw new Error()
+			throw new Error("tryFixSearchReplaceBlock: lineLimit must be greater than 0")
 		}
 
 		const replaceEndTagRegexp = /^([+]{3,}|[>]{3,}) REPLACE$/

@@ -47,12 +47,34 @@ export function findMatchingResourceOrTemplate(
  * Attempts to convert an MCP server name to its display name using the marketplace catalog
  * @param serverName The server name/ID to look up
  * @param mcpMarketplaceCatalog The marketplace catalog containing server metadata
- * @returns The display name if found in catalog, otherwise returns the original server name
+ * @returns The display name if found in catalog, otherwise returns a friendly version of the server name
  */
 export function getMcpServerDisplayName(serverName: string, mcpMarketplaceCatalog: McpMarketplaceCatalog): string {
 	// Find matching item in marketplace catalog
 	const catalogItem = mcpMarketplaceCatalog.items.find((item) => item.mcpId === serverName)
 
-	// Return display name if found, otherwise return original server name
-	return catalogItem?.name || serverName
+	if (catalogItem?.name) {
+		return catalogItem.name
+	}
+
+	// If not in catalog, try to extract a friendly name from GitHub URLs
+	if (serverName.startsWith("http://") || serverName.startsWith("https://")) {
+		try {
+			const url = new URL(serverName)
+			// Extract repo name from GitHub URLs (e.g., "https://github.com/user/repo" -> "repo")
+			if (url.hostname === "github.com") {
+				const pathParts = url.pathname.split("/").filter(Boolean)
+				if (pathParts.length >= 2) {
+					return pathParts[1] // Return repo name
+				}
+			}
+			// For other URLs, return the hostname
+			return url.hostname
+		} catch {
+			// If URL parsing fails, fall through to return original
+		}
+	}
+
+	// Return original server name as fallback
+	return serverName
 }

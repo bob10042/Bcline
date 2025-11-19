@@ -152,6 +152,16 @@ export function toolSpecInputSchema(tool: ClineToolSpec, context: SystemPromptCo
 
 	if (tool.parameters) {
 		for (const param of tool.parameters) {
+			// Check dependencies first - skip parameter if dependencies not met
+			if (param.dependencies && param.dependencies.length > 0) {
+				// For dependency checking, we need to verify all dependent tools are available
+				// This prevents parameters like task_progress from appearing when TODO tool is disabled
+				const toolRegistry = context.toolRegistry || []
+				if (!param.dependencies.every((d) => toolRegistry.includes(d))) {
+					continue
+				}
+			}
+
 			// Check if parameter should be included based on context requirements
 			if (param.contextRequirements && !param.contextRequirements(context)) {
 				continue
@@ -250,6 +260,16 @@ export function toolSpecFunctionDeclarations(tool: ClineToolSpec, context: Syste
 
 	if (tool.parameters) {
 		for (const param of tool.parameters) {
+			// Check dependencies first - skip parameter if dependencies not met
+			if (param.dependencies && param.dependencies.length > 0) {
+				// For dependency checking, we need to verify all dependent tools are available
+				// This prevents parameters like task_progress from appearing when TODO tool is disabled
+				const toolRegistry = context.toolRegistry || []
+				if (!param.dependencies.every((d) => toolRegistry.includes(d))) {
+					continue
+				}
+			}
+
 			// Check if parameter should be included based on context requirements
 			if (param.contextRequirements && !param.contextRequirements(context)) {
 				continue
