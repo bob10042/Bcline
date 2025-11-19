@@ -93,6 +93,9 @@ export class DifyHandler implements ApiHandler {
 	}
 
 	async *createMessage(systemPrompt: string, messages: ClineStorageMessage[]): ApiStream {
+		// Create abort controller for this request
+		this.abortController = new AbortController()
+
 		// Convert messages to Dify format
 		const query = this.convertMessagesToQuery(systemPrompt, messages)
 		const requestBody = {
@@ -115,8 +118,11 @@ export class DifyHandler implements ApiHandler {
 					"Content-Type": "application/json",
 				},
 				body: JSON.stringify(requestBody),
+				signal: this.abortController.signal,
 			})
 		} catch (error: any) {
+			// Clean up abort controller
+			this.abortController = null
 			const cause = error.cause ? ` | Cause: ${error.cause}` : ""
 			throw new Error(`Dify API network error: ${error.message}${cause}`)
 		}
@@ -313,6 +319,8 @@ export class DifyHandler implements ApiHandler {
 			}
 		} finally {
 			reader.releaseLock()
+			// Clean up abort controller
+			this.abortController = null
 		}
 	}
 
@@ -349,6 +357,17 @@ export class DifyHandler implements ApiHandler {
 				outputPrice: 0,
 				description: "Dify workflow - model selection is configured in your Dify application",
 			},
+		}
+	}
+
+	/**
+	 * Cancels the current Dify request if one is in progress
+	 */
+	public abortCurrentRequest(): void {
+		if (this.abortController) {
+			console.log("Aborting current Dify request...")
+			this.abortController.abort()
+			this.abortController = null
 		}
 	}
 
