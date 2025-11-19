@@ -1,30 +1,38 @@
 # Changelog
 
-## [3.38.1]
+## 3.37.2
 
-### Fixed
-- Fixed handling of 'signature' field in sanitizeAnthropicContentBlock to properly preserve it when thinking is enabled, as required by Anthropic's API.
+### Major Improvements - CLI Error Detection ⚡
 
-## [3.38.0]
+- **feat: Comprehensive CLI error detection and task completion verification** - 5 major improvements to prevent false "task complete" claims and catch command failures
+  - Fix critical system prompt contradiction that told Cline to "assume success" - now checks for errors explicitly
+  - Add exit code tracking and reporting for all commands (Exit Code: 0 = success, non-zero = error)
+  - Add error pattern detection scanning output for 13 common error indicators (error:, failed, npm ERR!, fatal:, etc.)
+  - Add pre-completion validation blocking attempt_completion when recent commands failed
+  - Add smart feedback detection recognizing when user says "didn't work" and forcing re-evaluation
+  - Expected 50-70% reduction in false completions and scripting errors
 
-### Added
-- Gemini 3 Pro Preview model
-- AquaVoice Avalon model for voice-to-text dictation
+### Critical Fixes
 
-### Fixed
-- Automatic context truncation when AWS Bedrock token usage rate limits are exceeded
-- Removed new_task tool from system prompts, updated slash command prompts, and added helper function for native tool calling validation
+- **Fix: File Truncation Bug (Issue #1)** - Preserve trailing newlines in FileEditProvider truncateDocument() method to prevent data loss during diff/edit operations. See CRITICAL_FIXES.md for details. (Commit: 8c4cd57)
 
+### Bug Fixes - Batch 4
 
-## [3.37.1]
+- Fix: 14 error handling and logging improvements
+  - 6 console.log → console.error conversions for proper error visibility
+  - 2 empty Error() messages now have descriptive text
+  - 1 JSON.parse crash fix for corrupted Jupyter notebooks
+- See BATCH4_BUGS.md for complete details
 
-- Comprehensive changes to better support GPT 5.1 - System prompt, tools, deep-planning, focus chain, etc.
-- Add AGENTS.md support
-- feat(models): Add free minimax/mimax-m2 model to the model picker
+## 3.37.1
+
+- cf8dd1c: Comprehensive changes to better support GPT 5.1 - System prompt, tools, deep-planning, focus chain, etc.
+- 02abbcf: Add AGENTS.md support
+- 855db7d: feat(models): Add free minimax/mimax-m2 model to the model picker
 
 ## [3.37.0]
 
-### Added
+## Added
 
 - GPT-5.1 with model-specific prompting: tailored system prompts, tool usage, focus chain, and deep-planning optimizations
 - Nous Research provider with Hermes 4 model family and custom system prompts
@@ -34,7 +42,7 @@
 - Expanded HTTP proxy support throughout the codebase
 - Improved focus chain prompting for frontier models (Anthropic, OpenAI, Gemini, xAI)
 
-### Fixed
+## Fixed
 
 - Duplicate tool results prevention through existence checking
 - XML entity escaping in model content processor

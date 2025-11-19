@@ -176,15 +176,21 @@ export async function ensureLocalClineDirExists(clinerulePath: string, defaultRu
 			try {
 				await fs.mkdir(clinerulePath, { recursive: true })
 				await fs.writeFile(path.join(clinerulePath, defaultRuleFilename), content, "utf8")
-				await fs.unlink(tempPath).catch(() => {}) // delete backup
+				await fs.unlink(tempPath).catch((error) => {
+					console.error("Failed to delete backup file after successful conversion:", error)
+				}) // delete backup
 
 				return false // conversion successful with no errors
 			} catch (_conversionError) {
 				// attempt to restore backup on conversion failure
 				try {
-					await fs.rm(clinerulePath, { recursive: true, force: true }).catch(() => {})
+					await fs.rm(clinerulePath, { recursive: true, force: true }).catch((error) => {
+						console.error("Failed to clean up directory during restore:", error)
+					})
 					await fs.rename(tempPath, clinerulePath) // restore backup
-				} catch (_restoreError) {}
+				} catch (_restoreError) {
+					console.error("Failed to restore backup after conversion error:", _restoreError)
+				}
 				return true // in either case here we consider this an error
 			}
 		}

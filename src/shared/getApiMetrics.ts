@@ -34,9 +34,21 @@ export function getApiMetrics(messages: ClineMessage[]): ApiMetrics {
 		totalCost: 0,
 	}
 
+	// Track timestamps to prevent double-counting (Issue #7371)
+	// Ensures each API request is only counted once, fixing random token spikes
+	const countedTimestamps = new Set<number>()
+
 	messages.forEach((message) => {
 		if (message.type === "say" && (message.say === "api_req_started" || message.say === "deleted_api_reqs") && message.text) {
 			try {
+				// Skip if we've already counted this request (prevents token spikes)
+				if (message.ts && countedTimestamps.has(message.ts)) {
+					return
+				}
+				if (message.ts) {
+					countedTimestamps.add(message.ts)
+				}
+
 				const parsedData = JSON.parse(message.text)
 				const { tokensIn, tokensOut, cacheWrites, cacheReads, cost } = parsedData
 

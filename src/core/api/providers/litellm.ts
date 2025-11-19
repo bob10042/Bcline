@@ -50,9 +50,8 @@ export class LiteLlmHandler implements ApiHandler {
 
 	private ensureClient(): OpenAI {
 		if (!this.client) {
-			if (!this.options.liteLlmApiKey) {
-				throw new Error("LiteLLM API key is required")
-			}
+			// LiteLLM API key is optional - many proxy setups don't require authentication
+			// Default to "noop" when not provided, matching UI placeholder behavior
 			try {
 				this.client = new OpenAI({
 					baseURL: this.options.liteLlmBaseUrl || "http://localhost:4000",

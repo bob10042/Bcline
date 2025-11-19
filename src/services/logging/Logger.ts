@@ -34,7 +34,7 @@ export class Logger {
 		}
 		HostProvider.get().logToChannel(`${level} ${fullMessage}`)
 		if (error?.stack) {
-			console.log(`Stack trace:\n${error.stack}`)
+			console.error(`Stack trace:\n${error.stack}`)
 		}
 	}
 }

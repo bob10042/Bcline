@@ -141,7 +141,7 @@ class CheckpointTracker {
 			try {
 				await simpleGit().version()
 			} catch (_error) {
-				throw new Error("Git must be installed to use checkpoints.") // FIXME: must match what we check for in TaskHeader to show link
+				throw new Error("Git must be installed to use checkpoints.") // Must match CheckpointError.tsx:18
 			}
 
 			// Validate and normalize workspace paths - for now, we just use the first valid path

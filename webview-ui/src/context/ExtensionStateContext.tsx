@@ -338,10 +338,8 @@ export const ExtensionStateContextProvider: React.FC<{
 						})
 					} catch (error) {
 						console.error("Error parsing state JSON:", error)
-						console.log("[DEBUG] ERR getting state", error)
 					}
 				}
-				console.log('[DEBUG] ended "got subscribed state"')
 			},
 			onError: (error) => {
 				console.error("Error in state subscription:", error)
@@ -356,7 +354,6 @@ export const ExtensionStateContextProvider: React.FC<{
 			{},
 			{
 				onResponse: () => {
-					console.log("[DEBUG] Received mcpButtonClicked event from gRPC stream")
 					navigateToMcp()
 				},
 				onError: (error) => {
@@ -374,7 +371,6 @@ export const ExtensionStateContextProvider: React.FC<{
 			{
 				onResponse: () => {
 					// When history button is clicked, navigate to history view
-					console.log("[DEBUG] Received history button clicked event from gRPC stream")
 					navigateToHistory()
 				},
 				onError: (error) => {
@@ -392,7 +388,6 @@ export const ExtensionStateContextProvider: React.FC<{
 			{
 				onResponse: () => {
 					// When chat button is clicked, navigate to chat
-					console.log("[DEBUG] Received chat button clicked event from gRPC stream")
 					navigateToChat()
 				},
 				onError: (error) => {
@@ -405,7 +400,6 @@ export const ExtensionStateContextProvider: React.FC<{
 		// Subscribe to didBecomeVisible events
 		didBecomeVisibleUnsubscribeRef.current = UiServiceClient.subscribeToDidBecomeVisible(EmptyRequest.create({}), {
 			onResponse: () => {
-				console.log("[DEBUG] Received didBecomeVisible event from gRPC stream")
 				window.dispatchEvent(new CustomEvent("focusChatInput"))
 			},
 			onError: (error) => {
@@ -417,7 +411,6 @@ export const ExtensionStateContextProvider: React.FC<{
 		// Subscribe to MCP servers updates
 		mcpServersSubscriptionRef.current = McpServiceClient.subscribeToMcpServers(EmptyRequest.create(), {
 			onResponse: (response) => {
-				console.log("[DEBUG] Received MCP servers update from gRPC stream")
 				if (response.mcpServers) {
 					setMcpServers(convertProtoMcpServersToMcpServers(response.mcpServers))
 				}
@@ -472,15 +465,12 @@ export const ExtensionStateContextProvider: React.FC<{
 			onError: (error) => {
 				console.error("Error in partialMessage subscription:", error)
 			},
-			onComplete: () => {
-				console.log("[DEBUG] partialMessage subscription completed")
-			},
+			onComplete: () => {},
 		})
 
 		// Subscribe to MCP marketplace catalog updates
 		mcpMarketplaceUnsubscribeRef.current = McpServiceClient.subscribeToMcpMarketplaceCatalog(EmptyRequest.create({}), {
 			onResponse: (catalog) => {
-				console.log("[DEBUG] Received MCP marketplace catalog update from gRPC stream")
 				setMcpMarketplaceCatalog(catalog)
 			},
 			onError: (error) => {
@@ -509,19 +499,14 @@ export const ExtensionStateContextProvider: React.FC<{
 		})
 
 		// Initialize webview using gRPC
-		UiServiceClient.initializeWebview(EmptyRequest.create({}))
-			.then(() => {
-				console.log("[DEBUG] Webview initialization completed via gRPC")
-			})
-			.catch((error) => {
-				console.error("Failed to initialize webview via gRPC:", error)
-			})
+		UiServiceClient.initializeWebview(EmptyRequest.create({})).catch((error) => {
+			console.error("Failed to initialize webview via gRPC:", error)
+		})
 
 		// Set up account button clicked subscription
 		accountButtonClickedSubscriptionRef.current = UiServiceClient.subscribeToAccountButtonClicked(EmptyRequest.create(), {
 			onResponse: () => {
 				// When account button is clicked, navigate to account view
-				console.log("[DEBUG] Received account button clicked event from gRPC stream")
 				navigateToAccount()
 			},
 			onError: (error) => {

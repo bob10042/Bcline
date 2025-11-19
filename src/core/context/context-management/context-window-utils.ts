@@ -9,9 +9,10 @@ import { OpenAiHandler } from "@core/api/providers/openai"
  */
 export function getContextWindowInfo(api: ApiHandler) {
 	let contextWindow = api.getModel().info.contextWindow || 128_000
-	// FIXME: hack to get anyone using openai compatible with deepseek to have the proper context window instead of the default 128k. We need a way for the user to specify the context window for models they input through openai compatible
 
-	// Handle special cases like DeepSeek
+	// NOTE: DeepSeek models use 128k context window when accessed via OpenAI-compatible API
+	// Future enhancement: Add UI setting to allow users to configure custom context windows
+	// for models accessed through OpenAI-compatible endpoints
 	if (api instanceof OpenAiHandler && api.getModel().id.toLowerCase().includes("deepseek")) {
 		contextWindow = 128_000
 	}

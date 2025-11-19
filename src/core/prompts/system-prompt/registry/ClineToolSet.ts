@@ -107,20 +107,15 @@ export class ClineToolSet {
 	/**
 	 * Get the appropriate native tool converter for the given provider
 	 */
-	public static getNativeConverter(providerId: string, modelId?: string) {
+	public static getNativeConverter(providerId: string) {
 		switch (providerId) {
 			case "minimax":
+				return toolSpecInputSchema
 			case "anthropic":
 				return toolSpecInputSchema
 			case "gemini":
 				return toolSpecFunctionDeclarations
-			case "vertex":
-				if (modelId?.includes("gemini")) {
-					return toolSpecFunctionDeclarations
-				}
-				return toolSpecInputSchema
 			default:
-				// Default to OpenAI Compatible converter
 				return toolSpecFunctionDefinition
 		}
 	}
@@ -143,10 +138,35 @@ export class ClineToolSet {
 		const mcpTools = mcpServers?.flatMap((server) => mcpToolToClineToolSpec(variant.family, server))
 
 		const enabledTools = [...toolConfigs, ...mcpTools]
-		const converter = ClineToolSet.getNativeConverter(context.providerInfo.providerId, context.providerInfo.model.id)
+		const converter = ClineToolSet.getNativeConverter(context.providerInfo.providerId)
 
 		return enabledTools.map((tool) => converter(tool, context))
 	}
+}
+
+/**
+ * Truncates an MCP tool name to fit within OpenAI's 64-character limit
+ * Format: serverUid + "0mcp0" + toolName, truncated intelligently if needed
+ */
+function truncateMcpToolName(serverUid: string, toolName: string): string {
+	const identifier = CLINE_MCP_TOOL_IDENTIFIER // "0mcp0" = 5 chars
+	const maxLength = 64 // OpenAI's limit
+	const fullName = serverUid + identifier + toolName
+
+	if (fullName.length <= maxLength) {
+		return fullName
+	}
+
+	// Need to truncate - distribute space between server and tool name
+	// Reserve 5 chars for identifier, split remaining between server and tool
+	const availableChars = maxLength - identifier.length
+	const halfChars = Math.floor(availableChars / 2)
+
+	// Truncate both parts proportionally
+	const truncatedServer = serverUid.slice(0, halfChars)
+	const truncatedTool = toolName.slice(0, availableChars - halfChars)
+
+	return truncatedServer + identifier + truncatedTool
 }
 
 /**
@@ -154,61 +174,70 @@ export class ClineToolSet {
  */
 export function mcpToolToClineToolSpec(family: ModelFamily, server: McpServer): ClineToolSpec[] {
 	const tools = server.tools || []
-	return tools
-		.map((mcpTool) => {
-			let parameters: any[] = []
+	return tools.map((mcpTool) => {
+		let parameters: any[] = []
 
-			if (mcpTool.inputSchema && "properties" in mcpTool.inputSchema) {
-				const schema = mcpTool.inputSchema as any
-				const requiredFields = new Set(schema.required || [])
+		if (mcpTool.inputSchema && "properties" in mcpTool.inputSchema) {
+			const schema = mcpTool.inputSchema as any
+			const requiredFields = new Set(schema.required || [])
 
-				parameters = Object.entries(schema.properties as Record<string, any>).map(([name, propSchema]) => {
-					// Preserve the full schema, not just basic fields
-					const param: any = {
-						name,
-						instruction: propSchema.description || "",
-						type: propSchema.type || "string",
-						required: requiredFields.has(name),
-					}
-
-					// Preserve items for array types
-					if (propSchema.items) {
-						param.items = propSchema.items
-					}
-
-					// Preserve properties for object types
-					if (propSchema.properties) {
-						param.properties = propSchema.properties
-					}
-
-					// Preserve other JSON Schema fields (enum, format, minimum, maximum, etc.)
-					for (const key in propSchema) {
-						if (!["type", "description", "items", "properties"].includes(key)) {
-							param[key] = propSchema[key]
-						}
-					}
-
-					return param
-				})
-			}
-
-			const mcpToolName = server.uid + CLINE_MCP_TOOL_IDENTIFIER + mcpTool.name
-
-			// NOTE: When the name is too long, the provider API will reject the tool registration with the following error:
-			// `Invalid 'tools[n].name': string too long. Expected a string with maximum length 64, but got a string with length n instead.`
-			// To avoid this, we skip registering tools with names that are too long.
-			if (mcpToolName?.length <= 64) {
-				return {
-					variant: family,
-					id: ClineDefaultTool.MCP_USE,
-					// We will use the identifier to reconstruct the MCP server and tool name later
-					name: mcpToolName,
-					description: `${server.name}: ${mcpTool.description || mcpTool.name}`,
-					parameters,
+			parameters = Object.entries(schema.properties as Record<string, any>).map(([name, propSchema]) => {
+				// Preserve the full schema, not just basic fields
+				const param: any = {
+					name,
+					instruction: propSchema.description || "",
+					type: propSchema.type || "string",
+					required: requiredFields.has(name),
 				}
-			}
 
-			return undefined
-		})
-		.filter((t) => t !== undefined)
+				// Preserve items for array types
+				if (propSchema.items) {
+					param.items = propSchema.items
+				}
+
+				// Preserve properties for object types
+				if (propSchema.properties) {
+					param.properties = propSchema.properties
+				}
+
+				// Preserve other JSON Schema fields (enum, format, minimum, maximum, etc.)
+				for (const key in propSchema) {
+					if (!["type", "description", "items", "properties"].includes(key)) {
+						param[key] = propSchema[key]
+					}
+				}
+
+				return param
+			})
+		}
+
+		// OpenAI enforces a 64-character limit on tool names
+		// Construct the name and truncate if necessary
+		const MAX_TOOL_NAME_LENGTH = 64
+		let toolName = server.uid + CLINE_MCP_TOOL_IDENTIFIER + mcpTool.name
+
+		if (toolName.length > MAX_TOOL_NAME_LENGTH) {
+			// Calculate available space for server.uid and mcpTool.name
+			const identifierLength = CLINE_MCP_TOOL_IDENTIFIER.length
+			const availableLength = MAX_TOOL_NAME_LENGTH - identifierLength
+
+			// Split available space: prioritize tool name, truncate server.uid if needed
+			const toolNameMaxLength = Math.floor(availableLength * 0.6) // 60% for tool name
+			const serverUidMaxLength = availableLength - toolNameMaxLength
+
+			const truncatedServerUid = (server.uid || "").slice(0, serverUidMaxLength)
+			const truncatedMcpToolName = mcpTool.name.slice(0, toolNameMaxLength)
+
+			toolName = truncatedServerUid + CLINE_MCP_TOOL_IDENTIFIER + truncatedMcpToolName
+		}
+
+		return {
+			variant: family,
+			id: ClineDefaultTool.MCP_USE,
+			// We will use the identifier to reconstruct the MCP server and tool name later
+			name: toolName,
+			description: `${server.name}: ${mcpTool.description || mcpTool.name}`,
+			parameters,
+		}
+	})
 }

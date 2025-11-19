@@ -67,7 +67,13 @@ import { CLINE_MCP_TOOL_IDENTIFIER } from "@shared/mcp"
 import { convertClineMessageToProto } from "@shared/proto-conversions/cline-message"
 import { ClineDefaultTool } from "@shared/tools"
 import { ClineAskResponse } from "@shared/WebviewMessage"
-import { isClaude4PlusModelFamily, isGPT5ModelFamily, isLocalModel, isNextGenModelFamily } from "@utils/model-utils"
+import {
+	isClaude4PlusModelFamily,
+	isGPT5ModelFamily,
+	isLocalModel,
+	isNextGenModelFamily,
+	isNextGenModelProvider,
+} from "@utils/model-utils"
 import { arePathsEqual, getDesktopDir } from "@utils/path"
 import { filterExistingFiles } from "@utils/tabFiltering"
 import cloneDeep from "clone-deep"
@@ -220,7 +226,6 @@ export class Task {
 			terminate?: () => void
 		}
 		command: string
-		outputLines: string[]
 	}
 
 	// Metadata tracking
@@ -968,11 +973,11 @@ export class Task {
 
 			// Handle cancellation from hook
 			if (taskStartResult.cancel === true) {
-				// Always save state regardless of cancellation source
+				// UNIFIED: Always save state regardless of cancellation source
 				await this.handleHookCancellation("TaskStart", taskStartResult.wasCancelled)
 
-				// Let Controller handle the cancellation (it will call abortTask)
-				await this.cancelTask()
+				// abortTask will handle cleanup
+				this.abortTask()
 				return
 			}
 
@@ -988,12 +993,6 @@ export class Task {
 			}
 		}
 
-		// Defensive check: Verify task wasn't aborted during hook execution before continuing
-		// Must be OUTSIDE the hooksEnabled block to prevent UserPromptSubmit from running
-		if (this.taskState.abort) {
-			return
-		}
-
 		// Run UserPromptSubmit hook for initial task (after TaskStart for UI ordering)
 		const userPromptHookResult = await this.runUserPromptSubmitHook(userContent, "initial_task")
 
@@ -1005,7 +1004,7 @@ export class Task {
 		// Handle hook cancellation
 		if (userPromptHookResult.cancel === true) {
 			await this.handleHookCancellation("UserPromptSubmit", userPromptHookResult.wasCancelled ?? false)
-			await this.cancelTask()
+			this.abortTask()
 			return
 		}
 
@@ -1116,11 +1115,19 @@ export class Task {
 
 			// Handle cancellation from hook
 			if (taskResumeResult.cancel === true) {
-				// UNIFIED: Always save state regardless of cancellation source
-				await this.handleHookCancellation("TaskResume", taskResumeResult.wasCancelled)
+				// If hook was cancelled by user, save state for resume
+				if (taskResumeResult.wasCancelled) {
+					// Set flag to allow Controller.cancelTask() to proceed
+					this.taskState.didFinishAbortingStream = true
+					// Save BOTH clineMessages AND apiConversationHistory so Controller.cancelTask() can find the task
+					await this.messageStateHandler.saveClineMessagesAndUpdateHistory()
+					await this.messageStateHandler.overwriteApiConversationHistory(
+						this.messageStateHandler.getApiConversationHistory(),
+					)
+					await this.postStateToWebview()
+				}
 
-				// Let Controller handle the cancellation (it will call abortTask)
-				await this.cancelTask()
+				// Return without continuing task - Controller.cancelTask() will handle showing resume button
 				return
 			}
 
@@ -1132,13 +1139,6 @@ export class Task {
 				})
 			}
 		}
-
-		// Defensive check: Verify task wasn't aborted during hook execution before continuing
-		// Must be OUTSIDE the hooksEnabled block to prevent UserPromptSubmit from running
-		if (this.taskState.abort) {
-			return
-		}
-
 		let responseText: string | undefined
 		let responseImages: string[] | undefined
 		let responseFiles: string[] | undefined
@@ -1267,7 +1267,7 @@ export class Task {
 		// Handle hook cancellation request
 		if (userPromptHookResult.cancel === true) {
 			// The hook already updated its status to "cancelled" internally and saved state
-			await this.cancelTask()
+			this.abortTask()
 			return
 		}
 
@@ -1399,12 +1399,42 @@ export class Task {
 				}
 			}
 
+			// Cancel ongoing API request if using Ollama
+			if (this.api && typeof (this.api as any).abortCurrentRequest === "function") {
+				try {
+					;(this.api as any).abortCurrentRequest()
+				} catch (error) {
+					Logger.error("Failed to abort API request during task abort", error)
+				}
+			}
+
 			// PHASE 4: Run TaskCancel hook
 			// This allows the hook UI to appear in the webview
 			// Use the shouldRunTaskCancelHook value we captured in Phase 1
 			const hooksEnabled = this.stateManager.getGlobalSettingsKey("hooksEnabled")
 			if (hooksEnabled && shouldRunTaskCancelHook) {
 				try {
+					const { executeHook } = await import("../hooks/hook-executor")
+
+					const taskCancelResult = await executeHook({
+						hookName: "TaskCancel",
+						hookInput: {
+							taskCancel: {
+								taskMetadata: {
+									taskId: this.taskId,
+									ulid: this.ulid,
+									completionStatus: this.taskState.abandoned ? "abandoned" : "cancelled",
+								},
+							},
+						},
+						isCancellable: false, // TaskCancel is NOT cancellable
+						say: this.say.bind(this),
+						// No setActiveHookExecution or clearActiveHookExecution for non-cancellable hooks
+						messageStateHandler: this.messageStateHandler,
+						taskId: this.taskId,
+						hooksEnabled,
+					})
+
 					// TaskCancel completed successfully
 					// Present resume button after successful TaskCancel hook
 					const lastClineMessage = this.messageStateHandler
@@ -1498,13 +1528,6 @@ export class Task {
 			command = transformClineCommand(command)
 		}
 
-		// Strip leading `cd` to workspace from command
-		// TODO - feed this back to the model to discourage redundant `cd` usage in subsequent commands. For now we re just stripping it for better UX
-		const workspaceCdPrefix = `cd ${this.cwd} && `
-		if (command.startsWith(workspaceCdPrefix)) {
-			command = command.substring(workspaceCdPrefix.length)
-		}
-
 		const subAgentStartTime = isSubagent ? performance.now() : 0
 
 		Logger.info("IS_TEST: " + isInTestMode())
@@ -1546,7 +1569,7 @@ export class Task {
 		this.controller.updateBackgroundCommandState(true, this.taskId)
 
 		if (this.terminalExecutionMode === "backgroundExec") {
-			this.activeBackgroundCommand = { process: process as any, command, outputLines: [] }
+			this.activeBackgroundCommand = { process: process as any, command }
 		}
 
 		const clearCommandState = async () => {
@@ -1670,11 +1693,6 @@ export class Task {
 			}
 			outputLines.push(line)
 
-			// Track output in activeBackgroundCommand for cancellation
-			if (this.terminalExecutionMode === "backgroundExec" && this.activeBackgroundCommand) {
-				this.activeBackgroundCommand.outputLines.push(line)
-			}
-
 			// Apply buffered streaming for both vscodeTerminal and backgroundExec modes
 			if (!didContinue) {
 				outputBuffer.push(line)
@@ -1693,6 +1711,7 @@ export class Task {
 		})
 
 		let completed = false
+		let exitCode: number | undefined
 		let completionTimer: NodeJS.Timeout | null = null
 		const COMPLETION_TIMEOUT_MS = 6000 // 6 seconds
 
@@ -1704,8 +1723,9 @@ export class Task {
 			}
 		}, COMPLETION_TIMEOUT_MS)
 
-		process.once("completed", async () => {
+		process.once("completed", async (commandExitCode: number | undefined) => {
 			completed = true
+			exitCode = commandExitCode
 			//await this.say("shell_integration_warning_with_suggestion")
 			// Clear the completion timer
 			if (completionTimer) {
@@ -1835,7 +1855,58 @@ export class Task {
 		}
 
 		if (completed) {
-			return [false, `Command executed.${result.length > 0 ? `\nOutput:\n${result}` : ""}`]
+			// Include exit code information when available
+			let exitCodeMessage = ""
+			if (exitCode !== undefined) {
+				if (exitCode === 0) {
+					exitCodeMessage = "\nExit Code: 0 (Success)"
+				} else {
+					exitCodeMessage = `\nExit Code: ${exitCode} (Error - command failed)`
+				}
+			} else {
+				// When exit code is not captured, note it explicitly
+				exitCodeMessage = "\nExit Code: Not captured (shell integration may be unavailable)"
+			}
+
+			// Check for error patterns in output
+			let errorWarning = ""
+			const errorPatterns = [
+				/error:/i,
+				/\bfailed\b/i,
+				/npm ERR!/i,
+				/fatal:/i,
+				/exception/i,
+				/\[FAIL\]/i,
+				/command not found/i,
+				/zerodivisionerror/i,
+				/assertionerror/i,
+				/traceback/i,
+				/Write-Error/i,
+				/WriteErrorException/i,
+				/CommandNotFoundException/i,
+				/PathNotFound/i,
+			]
+
+			const hasErrorPattern = errorPatterns.some((pattern) => pattern.test(result))
+			// Trigger warning if: error patterns found, non-zero exit code, or exit code not captured with minimal output
+			// Also check exit code message for error indicators (to catch cases where exit code is in message but not in result)
+			const exitCodeHasError = exitCodeMessage.toLowerCase().includes("error")
+			if (
+				hasErrorPattern ||
+				(exitCode !== undefined && exitCode !== 0) ||
+				(exitCode === undefined && result.trim().length < 100) ||
+				exitCodeHasError
+			) {
+				errorWarning =
+					"\n\n⚠️ ERROR DETECTED: The output contains error indicators or exit code verification failed. Please verify the command succeeded before proceeding."
+			}
+
+			// Store error warning as a command_output message so pre-completion validation can detect it
+			if (errorWarning) {
+				await this.say("command_output", errorWarning)
+			}
+
+			return [false, `Command executed.${exitCodeMessage}${result.length > 0 ? `\nOutput:\n${result}` : ""}${errorWarning}`]
 		} else {
 			return [
 				false,
@@ -1847,69 +1918,30 @@ export class Task {
 	}
 
 	public async cancelBackgroundCommand(): Promise<boolean> {
-		if (this.terminalExecutionMode !== "backgroundExec" || !this.activeBackgroundCommand) {
+		if (this.terminalExecutionMode !== "backgroundExec") {
 			return false
 		}
-
-		const { process, command, outputLines } = this.activeBackgroundCommand
+		if (!this.activeBackgroundCommand) {
+			return false
+		}
+		const { process } = this.activeBackgroundCommand
 		this.activeBackgroundCommand = undefined
 		this.controller.updateBackgroundCommandState(false, this.taskId)
-
 		try {
-			// Try to terminate the process if the method exists
-			if (typeof process.terminate === "function") {
-				try {
-					await process.terminate()
-					Logger.info(`Terminated background command: ${command}`)
-				} catch (error) {
-					Logger.error(`Error terminating background command: ${command}`, error)
-				}
+			if (typeof (process as any).terminate === "function") {
+				;(process as any).terminate()
+			} else {
+				;(process as any).continue?.()
 			}
-
-			// Ensure any pending operations complete
-			if (typeof process.continue === "function") {
-				try {
-					process.continue()
-				} catch (error) {
-					Logger.error(`Error continuing background command: ${command}`, error)
-				}
-			}
-
-			// Mark the command message as completed in the UI
-			const clineMessages = this.messageStateHandler.getClineMessages()
-			const lastCommandIndex = findLastIndex(clineMessages, (m) => m.ask === "command" || m.say === "command")
-			if (lastCommandIndex !== -1) {
-				await this.messageStateHandler.updateClineMessage(lastCommandIndex, {
-					commandCompleted: true,
-				})
-			}
-
-			// Process the captured output to include in the cancellation message
-			const processedOutput = this.terminalManager.processOutput(outputLines, undefined, false)
-
-			// Add cancellation information to the API conversation history
-			// This ensures the agent knows the command was cancelled in the next request
-			let cancellationMessage = `Command "${command}" was cancelled by the user.`
-			if (processedOutput.length > 0) {
-				cancellationMessage += `\n\nOutput captured before cancellation:\n${processedOutput}`
-			}
-
-			this.taskState.userMessageContent.push({
-				type: "text",
-				text: cancellationMessage,
-			})
-
-			return true
 		} catch (error) {
-			Logger.error("Error in cancelBackgroundCommand", error)
-			return false
-		} finally {
-			try {
-				await this.say("command_output", "Command execution has been cancelled.")
-			} catch (error) {
-				Logger.error("Failed to send cancellation notification", error)
-			}
+			Logger.error("Failed to terminate background command", error)
 		}
+		try {
+			await this.say("command_output", "Command cancelled. Background execution has been terminated.")
+		} catch (error) {
+			Logger.error("Failed to notify command cancellation", error)
+		}
+		return true
 	}
 
 	/**
@@ -2078,6 +2110,10 @@ export class Task {
 			maxConsecutiveMistakes: this.stateManager.getGlobalSettingsKey("maxConsecutiveMistakes"),
 		})
 
+		const nativeToolCallsGloballyEnabled =
+			featureFlagsService.getNativeToolCallEnabled() && this.stateManager.getGlobalStateKey("nativeToolCallEnabled")
+		const inferredNativeToolCalls =
+			!nativeToolCallsGloballyEnabled && isNextGenModelProvider(providerInfo) && isNextGenModelFamily(providerInfo.model.id)
 		const promptContext: SystemPromptContext = {
 			cwd: this.cwd,
 			ide,
@@ -2100,8 +2136,7 @@ export class Task {
 			workspaceRoots,
 			isSubagentsEnabledAndCliInstalled,
 			isCliSubagent,
-			enableNativeToolCalls:
-				featureFlagsService.getNativeToolCallEnabled() && this.stateManager.getGlobalStateKey("nativeToolCallEnabled"),
+			enableNativeToolCalls: nativeToolCallsGloballyEnabled || inferredNativeToolCalls,
 		}
 
 		const { systemPrompt, tools } = await getSystemPrompt(promptContext)
@@ -2290,18 +2325,10 @@ export class Task {
 			throw new Error("Cline instance aborted")
 		}
 
-		// Check if we have a complete tool block before acquiring the lock
-		// This allows tool execution to proceed during streaming without waiting for the lock
-		const currentBlock = this.taskState.assistantMessageContent[this.taskState.currentStreamingContentIndex]
-		const isCompleteToolBlock = currentBlock?.type === "tool_use" && !currentBlock.partial
-
-		// If we're locked and this is NOT a complete tool block, mark pending and return
-		// Complete tool blocks can proceed to acquire the lock and execute
-		if (this.taskState.presentAssistantMessageLocked && !isCompleteToolBlock) {
+		if (this.taskState.presentAssistantMessageLocked) {
 			this.taskState.presentAssistantMessageHasPendingUpdates = true
 			return
 		}
-
 		this.taskState.presentAssistantMessageLocked = true
 		this.taskState.presentAssistantMessageHasPendingUpdates = false
 
@@ -2387,7 +2414,7 @@ export class Task {
 		}
 
 		/*
-		Seeing out of bounds is fine, it means that the next tool call is being built up and ready to add to assistantMessageContent to present.
+		Seeing out of bounds is fine, it means that the next too call is being built up and ready to add to assistantMessageContent to present. 
 		When you see the UI inactive during this, it means that a tool is breaking without presenting any UI. For example the write_to_file tool was breaking when relpath was undefined, and for invalid relpath it never presented UI.
 		*/
 		this.taskState.presentAssistantMessageLocked = false // this needs to be placed here, if not then calling this.presentAssistantMessage below would fail (sometimes) since it's locked
@@ -2492,6 +2519,41 @@ export class Task {
 
 		// get previous api req's index to check token usage and determine if we need to truncate conversation history
 		const previousApiReqIndex = findLastIndex(this.messageStateHandler.getClineMessages(), (m) => m.say === "api_req_started")
+
+		// Pre-emptive context truncation for /smol and /compact commands (Issue #7379)
+		// When users explicitly request condensing via slash commands, we need to ensure
+		// there's enough context space for the condense instructions to reach the LLM
+		const userContentText = userContent
+			.filter((content) => content.type === "text")
+			.map((content) => (content as any).text)
+			.join(" ")
+		const hasCondenseCommand = /\/(?:smol|compact)\b/.test(userContentText)
+
+		if (hasCondenseCommand) {
+			// Check if context is near or at capacity
+			const isNearCapacity = this.contextManager.shouldCompactContextWindow(
+				this.messageStateHandler.getClineMessages(),
+				this.api,
+				previousApiReqIndex,
+				0.85, // 85% threshold - aggressive to ensure space for condense instructions
+			)
+
+			if (isNearCapacity) {
+				// Perform pre-emptive aggressive truncation to make room for the condense instructions
+				const apiConversationHistory = this.messageStateHandler.getApiConversationHistory()
+				this.taskState.conversationHistoryDeletedRange = this.contextManager.getNextTruncationRange(
+					apiConversationHistory,
+					this.taskState.conversationHistoryDeletedRange,
+					"quarter", // Aggressive truncation like error handler
+				)
+				await this.messageStateHandler.saveClineMessagesAndUpdateHistory()
+				await this.contextManager.triggerApplyStandardContextTruncationNoticeChange(
+					Date.now(),
+					await ensureTaskDirectoryExists(this.taskId),
+					apiConversationHistory,
+				)
+			}
+		}
 
 		// Save checkpoint if this is the first API request
 		const isFirstRequest = this.messageStateHandler.getClineMessages().filter((m) => m.say === "api_req_started").length === 0
@@ -2797,21 +2859,20 @@ export class Task {
 			this.taskState.toolUseIdMap.clear()
 
 			const stream = this.attemptApiRequest(previousApiReqIndex) // yields only if the first chunk is successful, otherwise will allow the user to retry the request (most likely due to rate limit error, which gets thrown on the first chunk)
-
 			let assistantMessage = "" // For UI display (includes XML)
 			let assistantTextOnly = "" // For API history (text only, no tool XML)
-			let assistantTextSignature: string | undefined
-
 			let reasoningMessage = ""
-			let reasoningSignature = ""
 			const reasoningDetails = []
 			const redactedThinkingContent: ClineAssistantRedactedThinkingBlock[] = []
-
 			this.taskState.isStreaming = true
 			let didReceiveUsageChunk = false
+			let reasoningSignature = ""
 
 			try {
 				for await (const chunk of stream) {
+					if (!chunk) {
+						continue
+					}
 					switch (chunk.type) {
 						case "usage":
 							didReceiveUsageChunk = true
@@ -2825,11 +2886,10 @@ export class Task {
 							// reasoning will always come before assistant message chunks
 							if (chunk.reasoning) {
 								reasoningMessage += chunk.reasoning
-								// Only call say when we actually have new reasoning content to display
-								// fixes bug where cancelling task > aborts task > for loop may be in middle of streaming reasoning > say function throws error before we get a chance to properly clean up and cancel the task.
-								if (!this.taskState.abort) {
-									await this.say("reasoning", reasoningMessage, undefined, undefined, true)
-								}
+							}
+							// fixes bug where cancelling task > aborts task > for loop may be in middle of streaming reasoning > say function throws error before we get a chance to properly clean up and cancel the task.
+							if (!this.taskState.abort) {
+								await this.say("reasoning", reasoningMessage, undefined, undefined, true)
 							}
 							if (chunk.signature) {
 								reasoningSignature = chunk.signature
@@ -2853,13 +2913,16 @@ export class Task {
 
 							break
 						case "tool_calls": {
+							if (!chunk.tool_call) {
+								console.log("no tool call in chunk, skipping...", chunk)
+								break
+							}
 							// Accumulate tool use blocks in proper Anthropic format
 							this.toolUseHandler.processToolUseDelta({
 								id: chunk.tool_call.function?.id,
 								type: "tool_use",
 								name: chunk.tool_call.function?.name,
 								input: chunk.tool_call.function?.arguments,
-								signature: chunk?.signature,
 							})
 
 							// Extract and store tool_use_id for creating proper ToolResultBlockParam
@@ -2884,12 +2947,7 @@ export class Task {
 							assistantMessage += toolBlocks.map((block) => JSON.stringify(block)).join("\n")
 							this.taskState.assistantMessageContent = [...textBlocks, ...toolBlocks]
 
-							// Reset index to the first tool block position so they can be executed during streaming
-							// This ensures presentAssistantMessage processes tool blocks instead of text blocks
-							if (toolBlocks.length > 0) {
-								this.taskState.currentStreamingContentIndex = textBlocks.length
-								this.taskState.userMessageContentReady = false
-							} else if (this.taskState.assistantMessageContent.length > prevLength) {
+							if (this.taskState.assistantMessageContent.length > prevLength) {
 								this.taskState.userMessageContentReady = false
 							}
 							this.presentAssistantMessage()
@@ -2899,9 +2957,6 @@ export class Task {
 							if (reasoningMessage && assistantMessage.length === 0) {
 								// complete reasoning message
 								await this.say("reasoning", reasoningMessage, undefined, undefined, false)
-							}
-							if (chunk.signature) {
-								assistantTextSignature = chunk.signature
 							}
 							assistantMessage += chunk.text
 							assistantTextOnly += chunk.text // Accumulate text separately
@@ -2962,13 +3017,7 @@ export class Task {
 
 					this.taskState.assistantMessageContent = [...textBlocks, ...toolBlocks]
 
-					// Reset index to the first tool block position so they can be executed
-					// This fixes the issue where tools remain unexecuted because the index
-					// advanced past them or was out of bounds during streaming
-					if (toolBlocks.length > 0) {
-						this.taskState.currentStreamingContentIndex = textBlocks.length
-						this.taskState.userMessageContentReady = false
-					} else if (this.taskState.assistantMessageContent.length > prevLength) {
+					if (this.taskState.assistantMessageContent.length > prevLength) {
 						this.taskState.userMessageContentReady = false
 					}
 					this.presentAssistantMessage()
@@ -3116,7 +3165,7 @@ export class Task {
 					...redactedThinkingContent,
 				]
 				// Append redacted reasoning block if signature exists
-				if (reasoningSignature || reasoningMessage) {
+				if (reasoningSignature) {
 					assistantContent.push({
 						type: "thinking",
 						thinking: reasoningMessage,
@@ -3130,7 +3179,6 @@ export class Task {
 						text: assistantTextOnly,
 						// reasoning_details only exists for cline/openrouter providers
 						reasoning_details: reasoningDetails.length > 0 ? reasoningDetails : undefined,
-						signature: assistantTextSignature,
 					})
 				}
 
@@ -3308,7 +3356,6 @@ export class Task {
 								this.ulid,
 								this.stateManager.getGlobalSettingsKey("focusChainSettings"),
 								this.useNativeToolCalls,
-								this.getCurrentProviderInfo(),
 							)
 
 							if (needsCheck) {
@@ -3572,7 +3619,7 @@ export class Task {
 		}
 
 		// Add context window usage information (conditionally for some models)
-		const { contextWindow } = getContextWindowInfo(this.api)
+		const { contextWindow, maxAllowedSize } = getContextWindowInfo(this.api)
 
 		// Get the token count from the most recent API request to accurately reflect context management
 		const getTotalTokensFromApiReqMessage = (msg: ClineMessage) => {
@@ -3597,7 +3644,7 @@ export class Task {
 		})
 
 		const lastApiReqTotalTokens = lastApiReqMessage ? getTotalTokensFromApiReqMessage(lastApiReqMessage) : 0
-		const usagePercentage = Math.round((lastApiReqTotalTokens / contextWindow) * 100)
+		const usagePercentage = Math.round((lastApiReqTotalTokens / maxAllowedSize) * 100)
 
 		// Determine if context window info should be displayed
 		const currentModelId = this.api.getModel().id
@@ -3609,21 +3656,24 @@ export class Task {
 			const autoCondenseThreshold =
 				(this.stateManager.getGlobalSettingsKey("autoCondenseThreshold") as number | undefined) ?? 0.75
 			const displayThreshold = autoCondenseThreshold - 0.15
-			const currentUsageRatio = lastApiReqTotalTokens / contextWindow
+			const currentUsageRatio = lastApiReqTotalTokens / maxAllowedSize
 			shouldShowContextWindow = currentUsageRatio >= displayThreshold
 		}
 
 		if (shouldShowContextWindow) {
 			details += "\n\n# Context Window Usage"
-			details += `\n${lastApiReqTotalTokens.toLocaleString()} / ${(contextWindow / 1000).toLocaleString()}K tokens used (${usagePercentage}%)`
+			details += `\n${lastApiReqTotalTokens.toLocaleString()} / ${(maxAllowedSize / 1000).toLocaleString()}K tokens used (${usagePercentage}%)`
 		}
 
 		details += "\n\n# Current Mode"
 		const mode = this.stateManager.getGlobalSettingsKey("mode")
 		if (mode === "plan") {
 			details += "\nPLAN MODE\n" + formatResponse.planModeInstructions()
-		} else {
+		} else if (mode === "act") {
 			details += "\nACT MODE"
+		} else {
+			// Fallback for undefined or unexpected mode values
+			details += `\nUNKNOWN MODE (${mode ?? "undefined"})`
 		}
 
 		return `<environment_details>\n${details.trim()}\n</environment_details>`

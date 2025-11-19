@@ -52,6 +52,37 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 
 		config.taskState.consecutiveMistakeCount = 0
 
+		// PRE-COMPLETION VALIDATION: Check recent command outputs for errors before allowing completion
+		const recentMessages = config.messageState.getClineMessages().slice(-15) // Check last 15 messages
+		const recentCommandOutputs = recentMessages.filter((m) => m.say === "command_output")
+
+		// Check for error indicators in recent command outputs
+		for (const output of recentCommandOutputs) {
+			const text = output.text || ""
+
+			// Check for error patterns
+			const errorPatterns = [
+				/exit code:.*[^0]\s*\(error/i, // Exit code not 0
+				/error:/i,
+				/\bfailed\b/i,
+				/npm ERR!/i,
+				/fatal:/i,
+				/exception/i,
+				/\[FAIL\]/i,
+				/command not found/i,
+				/⚠️ ERROR DETECTED/i, // Our own error detection marker
+			]
+
+			for (const pattern of errorPatterns) {
+				if (pattern.test(text)) {
+					config.taskState.consecutiveMistakeCount++
+					return formatResponse.toolError(
+						`Cannot attempt completion: Recent command output contains errors. Please review and fix the errors before attempting completion. Look for error messages in the command output and address them first.`,
+					)
+				}
+			}
+		}
+
 		// Run PreToolUse hook before execution
 		try {
 			const { ToolHookUtils } = await import("../utils/ToolHookUtils")
@@ -92,18 +123,23 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 			}
 		}
 
-		// Remove any partial completion_result message that may exist
+		// Remove any partial OR duplicate completion_result messages that may exist
 		// Search backwards since other messages may have been inserted after the partial
+		// In long conversations, we need to ensure we don't have multiple completion messages
 		const clineMessages = config.messageState.getClineMessages()
-		const partialCompletionIndex = findLastIndex(
-			clineMessages,
-			(m) => m.partial === true && m.type === "say" && m.say === "completion_result",
-		)
-		if (partialCompletionIndex !== -1) {
-			const updatedMessages = [
-				...clineMessages.slice(0, partialCompletionIndex),
-				...clineMessages.slice(partialCompletionIndex + 1),
-			]
+		const completionIndicesToRemove: number[] = []
+
+		// Find all partial completion_result messages (should be removed)
+		for (let i = clineMessages.length - 1; i >= 0; i--) {
+			const m = clineMessages[i]
+			if (m.partial === true && m.type === "say" && m.say === "completion_result") {
+				completionIndicesToRemove.push(i)
+			}
+		}
+
+		// Remove the found messages
+		if (completionIndicesToRemove.length > 0) {
+			const updatedMessages = clineMessages.filter((_, index) => !completionIndicesToRemove.includes(index))
 			config.messageState.setClineMessages(updatedMessages)
 			await config.messageState.saveClineMessagesAndUpdateHistory()
 		}
@@ -167,6 +203,31 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 
 		await config.callbacks.say("user_feedback", text ?? "", images, completionFiles)
 
+		// SMART FEEDBACK DETECTION: Detect negative feedback indicating task is not complete
+		const feedbackText = (text ?? "").toLowerCase()
+		const negativeIndicators = [
+			"didn't work",
+			"hasn't worked",
+			"not working",
+			"doesn't work",
+			"does not work",
+			"failed",
+			"broken",
+			"error",
+			"wrong",
+			"incorrect",
+			"issue",
+			"problem",
+			"bug",
+			"not done",
+			"incomplete",
+			"missing",
+			"fix this",
+			"try again",
+		]
+
+		const isNegativeFeedback = negativeIndicators.some((indicator) => feedbackText.includes(indicator))
+
 		const toolResults: (Anthropic.TextBlockParam | Anthropic.ImageBlockParam)[] = []
 		if (commandResult) {
 			if (typeof commandResult === "string") {
@@ -178,9 +239,24 @@ export class AttemptCompletionHandler implements IToolHandler, IPartialBlockHand
 				toolResults.push(...commandResult)
 			}
 		}
+
+		// Craft feedback message based on sentiment
+		let feedbackMessage = `The user has provided feedback on the results.`
+
+		if (isNegativeFeedback) {
+			feedbackMessage += ` ⚠️ CRITICAL: The user reports that something did NOT work as expected. You MUST carefully re-evaluate your previous steps:
+1. Check for errors in command outputs (exit codes, error messages)
+2. Verify all assumptions about what succeeded
+3. Review recent file changes for mistakes
+4. Test your work before attempting completion again
+Do NOT attempt completion again until you have identified and fixed the reported issues.`
+		}
+
+		feedbackMessage += ` Consider their input to continue the task, and then attempt completion again.\n<feedback>\n${text}\n</feedback>`
+
 		toolResults.push({
 			type: "text",
-			text: `The user has provided feedback on the results. Consider their input to continue the task, and then attempt completion again.\n<feedback>\n${text}\n</feedback>`,
+			text: feedbackMessage,
 		})
 		toolResults.push(...formatResponse.imageBlocks(images))
 

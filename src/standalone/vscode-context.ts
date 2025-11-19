@@ -27,6 +27,17 @@ export function initializeContext(clineDir?: string) {
 	const EXTENSION_DIR = path.join(INSTALL_DIR, "extension")
 	const EXTENSION_MODE = process.env.IS_DEV === "true" ? ExtensionMode.Development : ExtensionMode.Production
 
+	// Fix Issue #7374: Set NODE_PATH to include the extension's node_modules directory
+	// This ensures the vscode stub module can be found when running in IntelliJ/JetBrains
+	const nodeModulesPath = path.join(EXTENSION_DIR, "node_modules")
+	const existingNodePath = process.env.NODE_PATH || ""
+	process.env.NODE_PATH = existingNodePath ? `${nodeModulesPath}${path.delimiter}${existingNodePath}` : nodeModulesPath
+	// Update module paths to recognize the new NODE_PATH
+	if (require.main && typeof (require.main as any).paths !== "undefined") {
+		;(require.main as any).paths.unshift(nodeModulesPath)
+	}
+	log(`NODE_PATH set to: ${process.env.NODE_PATH}`)
+
 	const extension: Extension<void> = {
 		id: ExtensionRegistryInfo.id,
 		isActive: true,

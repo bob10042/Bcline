@@ -13,6 +13,7 @@ declare module "vscode" {
 			cwd?: vscode.Uri
 			executeCommand?: (command: string) => {
 				read: () => AsyncIterable<string>
+				exitCode?: number | undefined
 			}
 		}
 	}

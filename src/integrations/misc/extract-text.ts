@@ -76,7 +76,14 @@ async function extractTextFromIPYNB(filePath: string): Promise<string> {
 	const fileBuffer = await fs.readFile(filePath)
 	const encoding = await detectEncoding(fileBuffer)
 	const data = iconv.decode(fileBuffer, encoding)
-	const notebook = JSON.parse(data)
+
+	let notebook
+	try {
+		notebook = JSON.parse(data)
+	} catch (error) {
+		throw new Error(`Failed to parse Jupyter notebook: ${error instanceof Error ? error.message : String(error)}`)
+	}
+
 	let extractedText = ""
 
 	for (const cell of notebook.cells) {

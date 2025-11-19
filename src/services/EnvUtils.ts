@@ -23,7 +23,7 @@ export async function buildClineExtraHeaders(): Promise<Record<string, string>> 
 		headers[ClineHeaders.CLIENT_TYPE] = host.clineType || "unknown"
 		headers[ClineHeaders.CLIENT_VERSION] = host.clineVersion || "unknown"
 	} catch (error) {
-		console.log("Failed to get IDE/platform info via HostBridge EnvService.getHostVersion", error)
+		console.error("Failed to get IDE/platform info via HostBridge EnvService.getHostVersion:", error)
 		headers[ClineHeaders.PLATFORM] = "unknown"
 		headers[ClineHeaders.PLATFORM_VERSION] = "unknown"
 		headers[ClineHeaders.CLIENT_TYPE] = "unknown"
@@ -35,7 +35,7 @@ export async function buildClineExtraHeaders(): Promise<Record<string, string>> 
 		const isMultiRoot = await isMultiRootWorkspace()
 		headers[ClineHeaders.IS_MULTIROOT] = isMultiRoot ? "true" : "false"
 	} catch (error) {
-		console.log("Failed to detect multi-root workspace", error)
+		console.error("Failed to detect multi-root workspace:", error)
 		headers[ClineHeaders.IS_MULTIROOT] = "false"
 	}
 

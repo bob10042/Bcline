@@ -169,7 +169,10 @@ export class ClineAuthProvider implements IAuthProvider {
 
 			if (!response.ok) {
 				if (response.status === 400) {
-					const errorData = await response.json().catch(() => ({}))
+					const errorData = await response.json().catch((error) => {
+						console.error("Failed to parse error response JSON:", error)
+						return {}
+					})
 					const errorMessage = errorData?.error || "Invalid or expired authorization code"
 					throw new Error(errorMessage)
 				}
@@ -267,7 +270,10 @@ export class ClineAuthProvider implements IAuthProvider {
 			})
 
 			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({}))
+				const errorData = await response.json().catch((error) => {
+					console.error("Failed to parse error response JSON:", error)
+					return {}
+				})
 				throw new Error(errorData.error_description || "Failed to exchange authorization code for tokens")
 			}
 

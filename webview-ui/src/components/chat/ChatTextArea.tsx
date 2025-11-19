@@ -1009,6 +1009,8 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				}
 			}
 
+			// Safe to use innerHTML here because processedText is sanitized on line 982
+			// All < > & characters are escaped before mark tags are added
 			highlightLayerRef.current.innerHTML = processedText
 			highlightLayerRef.current.scrollTop = textAreaRef.current.scrollTop
 			highlightLayerRef.current.scrollLeft = textAreaRef.current.scrollLeft
