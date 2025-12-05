@@ -1813,6 +1813,7 @@ export class Task {
 			isSubagent ? terminalManager["subagentTerminalOutputLineLimit"] : undefined,
 			isSubagent,
 		)
+		const exitCode = process.exitCode
 
 		if (didCancelViaUi) {
 			return [
@@ -1827,6 +1828,14 @@ export class Task {
 		if (isSubagent && subAgentStartTime > 0) {
 			const durationMs = Math.round(performance.now() - subAgentStartTime)
 			telemetryService.captureSubagentExecution(this.ulid, durationMs, outputLines.length, completed)
+		}
+
+		if (completed && exitCode !== null && exitCode !== undefined && exitCode !== 0) {
+			const outputSection = result.length > 0 ? `\nTerminal output (stdout/stderr):\n${result}` : ""
+			return [
+				false,
+				formatResponse.toolError(`Command failed with exit code ${exitCode}.${outputSection}`),
+			]
 		}
 
 		if (userFeedback) {
