@@ -1,12 +1,11 @@
-import { describe, it } from "mocha"
-import "should"
-import { calculateTokenSummary } from "../token-summary"
+import { describe, expect, it } from "vitest"
+import { calculateTokenSummary, formatTokenSummary } from "../token-summary"
 
 describe("token-summary", () => {
 	it("Empty usage array returns all zeros", () => {
 		const summary = calculateTokenSummary([])
 
-		summary.should.deepEqual({
+		expect(summary).toEqual({
 			totalInputTokens: 0,
 			totalOutputTokens: 0,
 			totalCacheReadTokens: 0,
@@ -25,13 +24,13 @@ describe("token-summary", () => {
 			},
 		])
 
-		summary.totalInputTokens.should.equal(1_000)
-		summary.totalOutputTokens.should.equal(500)
-		summary.totalCacheReadTokens.should.equal(0)
-		summary.totalCacheWriteTokens.should.equal(0)
-		summary.requestCount.should.equal(1)
-		summary.averageTokensPerRequest.should.equal(1_500)
-		summary.totalCost.should.be.approximately(0.0105, 1e-12)
+		expect(summary.totalInputTokens).toBe(1_000)
+		expect(summary.totalOutputTokens).toBe(500)
+		expect(summary.totalCacheReadTokens).toBe(0)
+		expect(summary.totalCacheWriteTokens).toBe(0)
+		expect(summary.requestCount).toBe(1)
+		expect(summary.averageTokensPerRequest).toBe(1_500)
+		expect(summary.totalCost).toBeCloseTo(0.0105, 10)
 	})
 
 	it("Multiple requests with cache tokens calculates correctly", () => {
@@ -50,12 +49,20 @@ describe("token-summary", () => {
 			},
 		])
 
-		summary.totalInputTokens.should.equal(5_000)
-		summary.totalOutputTokens.should.equal(3_000)
-		summary.totalCacheReadTokens.should.equal(800)
-		summary.totalCacheWriteTokens.should.equal(300)
-		summary.requestCount.should.equal(2)
-		summary.averageTokensPerRequest.should.equal(4_000)
-		summary.totalCost.should.equal(0.06)
+		expect(summary.totalInputTokens).toBe(5_000)
+		expect(summary.totalOutputTokens).toBe(3_000)
+		expect(summary.totalCacheReadTokens).toBe(800)
+		expect(summary.totalCacheWriteTokens).toBe(300)
+		expect(summary.requestCount).toBe(2)
+		expect(summary.averageTokensPerRequest).toBe(4_000)
+		expect(summary.totalCost).toBe(0.06)
+	})
+
+	it("formatTokenSummary produces readable output", () => {
+		const summary = calculateTokenSummary([{ inputTokens: 1_000_000, outputTokens: 500_000 }])
+		const output = formatTokenSummary(summary)
+		expect(output).toContain("Token Usage Summary")
+		expect(output).toContain("Requests: 1")
+		expect(output).toContain("Estimated Cost:")
 	})
 })
