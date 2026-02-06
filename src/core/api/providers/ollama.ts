@@ -2,7 +2,7 @@ import { type ModelInfo, openAiModelInfoSaneDefaults } from "@shared/api"
 import { type Config, type Message, Ollama } from "ollama"
 import type { ChatCompletionTool } from "openai/resources/chat/completions"
 import { buildExternalBasicHeaders } from "@/services/EnvUtils"
-import { ClineStorageMessage } from "@/shared/messages/content"
+import type { ClineStorageMessage } from "@/shared/messages/content"
 import { fetch } from "@/shared/net"
 import { Logger } from "@/shared/services/Logger"
 import type { ApiHandler, CommonApiHandlerOptions } from "../"
@@ -147,7 +147,7 @@ export class OllamaHandler implements ApiHandler {
 		} catch (error) {
 			// Check if it's a cancellation error
 			if (error?.message?.includes("cancelled by user")) {
-				console.log("Ollama request cancelled by user")
+				Logger.log("Ollama request cancelled by user")
 				throw error // Re-throw to propagate cancellation
 			}
 
@@ -174,7 +174,7 @@ export class OllamaHandler implements ApiHandler {
 	 */
 	public abortCurrentRequest(): void {
 		if (this.currentAbortController) {
-			console.log("Aborting current Ollama request...")
+			Logger.log("Aborting current Ollama request...")
 			this.currentAbortController.abort()
 		}
 	}
