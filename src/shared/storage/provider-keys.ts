@@ -1,12 +1,15 @@
 // Map providers to their specific model ID keys
 
-import { SettingsKey } from "@shared/storage/state-keys"
+import type { SettingsKey } from "@shared/storage/state-keys"
 import {
-	ApiProvider,
+	type ApiProvider,
 	anthropicDefaultModelId,
+	askSageDefaultModelId,
 	basetenDefaultModelId,
 	bedrockDefaultModelId,
+	cerebrasDefaultModelId,
 	deepSeekDefaultModelId,
+	doubaoDefaultModelId,
 	fireworksDefaultModelId,
 	geminiDefaultModelId,
 	groqDefaultModelId,
@@ -15,11 +18,16 @@ import {
 	internationalQwenDefaultModelId,
 	liteLlmDefaultModelId,
 	minimaxDefaultModelId,
+	mistralDefaultModelId,
+	nebiusDefaultModelId,
 	nousResearchDefaultModelId,
 	openAiNativeDefaultModelId,
 	openRouterDefaultModelId,
+	qwenCodeDefaultModelId,
 	requestyDefaultModelId,
+	sambanovaDefaultModelId,
 	sapAiCoreDefaultModelId,
+	vertexDefaultModelId,
 	xaiDefaultModelId,
 } from "../api"
 
@@ -111,6 +119,14 @@ const ProviderDefaultModelMap: Partial<Record<ApiProvider, string>> = {
 	gemini: geminiDefaultModelId,
 	minimax: minimaxDefaultModelId,
 	qwen: internationalQwenDefaultModelId,
+	"qwen-code": qwenCodeDefaultModelId,
+	vertex: vertexDefaultModelId,
+	mistral: mistralDefaultModelId,
+	cerebras: cerebrasDefaultModelId,
+	sambanova: sambanovaDefaultModelId,
+	doubao: doubaoDefaultModelId,
+	asksage: askSageDefaultModelId,
+	nebius: nebiusDefaultModelId,
 	deepseek: deepSeekDefaultModelId,
 } as const
 

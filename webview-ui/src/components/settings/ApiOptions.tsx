@@ -1,9 +1,11 @@
+import type { ApiProvider } from "@shared/api"
 import { StringRequest } from "@shared/proto/cline/common"
 import PROVIDERS from "@shared/providers/providers.json"
-import { Mode } from "@shared/storage/types"
+import { getProviderDefaultModelId } from "@shared/storage/provider-keys"
+import type { Mode } from "@shared/storage/types"
 import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import Fuse from "fuse.js"
-import { KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useInterval } from "react-use"
 import styled from "styled-components"
 import { normalizeApiConfiguration } from "@/components/settings/utils/providerUtils"
@@ -101,7 +103,7 @@ const ApiOptions = ({
 
 	const { selectedProvider } = normalizeApiConfiguration(apiConfiguration, currentMode)
 
-	const { handleModeFieldChange } = useApiConfigurationHandlers()
+	const { handleModeFieldsChange } = useApiConfigurationHandlers()
 
 	const [_ollamaModels, setOllamaModels] = useState<string[]>([])
 
@@ -190,7 +192,23 @@ const ApiOptions = ({
 	}, [searchableItems, searchTerm, fuse, currentProviderLabel])
 
 	const handleProviderChange = (newProvider: string) => {
-		handleModeFieldChange({ plan: "planModeApiProvider", act: "actModeApiProvider" }, newProvider as any, currentMode)
+		if (newProvider !== selectedProvider) {
+			const provider = newProvider as ApiProvider
+			const defaultModelId = getProviderDefaultModelId(provider) ?? ""
+
+			handleModeFieldsChange(
+				{
+					provider: { plan: "planModeApiProvider", act: "actModeApiProvider" },
+					modelId: { plan: "planModeApiModelId", act: "actModeApiModelId" },
+				},
+				{
+					provider,
+					modelId: defaultModelId,
+				},
+				currentMode,
+			)
+		}
+
 		setIsDropdownVisible(false)
 		setSelectedIndex(-1)
 	}

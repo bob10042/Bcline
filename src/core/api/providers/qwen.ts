@@ -1,23 +1,23 @@
 import {
-	InternationalQwenModelId,
+	type InternationalQwenModelId,
 	internationalQwenDefaultModelId,
 	internationalQwenModels,
-	MainlandQwenModelId,
-	ModelInfo,
+	type MainlandQwenModelId,
+	type ModelInfo,
 	mainlandQwenDefaultModelId,
 	mainlandQwenModels,
 	QwenApiRegions,
 } from "@shared/api"
-import OpenAI from "openai"
+import type OpenAI from "openai"
 import type { ChatCompletionTool as OpenAITool } from "openai/resources/chat/completions"
-import { ClineStorageMessage } from "@/shared/messages/content"
+import type { ClineStorageMessage } from "@/shared/messages/content"
 import { createOpenAIClient } from "@/shared/net"
 import { Logger } from "@/shared/services/Logger"
-import { ApiHandler, CommonApiHandlerOptions } from "../"
+import type { ApiHandler, CommonApiHandlerOptions } from "../"
 import { withRetry } from "../retry"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { convertToR1Format } from "../transform/r1-format"
-import { ApiStream } from "../transform/stream"
+import type { ApiStream } from "../transform/stream"
 import { getOpenAIToolParams, ToolCallProcessor } from "../transform/tool-call-processor"
 
 interface QwenHandlerOptions extends CommonApiHandlerOptions {
@@ -66,17 +66,22 @@ export class QwenHandler implements ApiHandler {
 		const modelId = this.options.apiModelId
 		// Branch based on API line to let poor typescript know what to do
 		if (this.useChinaApi()) {
+			const resolvedId = mainlandQwenModels[modelId as MainlandQwenModelId]
+				? (modelId as MainlandQwenModelId)
+				: mainlandQwenDefaultModelId
+
 			return {
-				id: (modelId as MainlandQwenModelId) ?? mainlandQwenDefaultModelId,
-				info: mainlandQwenModels[modelId as MainlandQwenModelId] ?? mainlandQwenModels[mainlandQwenDefaultModelId],
+				id: resolvedId,
+				info: mainlandQwenModels[resolvedId],
 			}
-		} else {
-			return {
-				id: (modelId as InternationalQwenModelId) ?? internationalQwenDefaultModelId,
-				info:
-					internationalQwenModels[modelId as InternationalQwenModelId] ??
-					internationalQwenModels[internationalQwenDefaultModelId],
-			}
+		}
+		const resolvedId = internationalQwenModels[modelId as InternationalQwenModelId]
+			? (modelId as InternationalQwenModelId)
+			: internationalQwenDefaultModelId
+
+		return {
+			id: resolvedId,
+			info: internationalQwenModels[resolvedId],
 		}
 	}
 
