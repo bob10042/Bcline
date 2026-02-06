@@ -95,6 +95,10 @@ export interface SystemPromptContext {
 	readonly providerInfo: ApiProviderInfo
 	readonly cwd?: string
 	readonly ide: string
+	readonly editorTabs?: {
+		readonly open?: readonly string[]
+		readonly visible?: readonly string[]
+	}
 	readonly supportsBrowserUse?: boolean
 	readonly mcpHub?: McpHub
 	readonly skills?: SkillMetadata[]
@@ -116,6 +120,7 @@ export interface SystemPromptContext {
 	readonly workspaceRoots?: Array<{ path: string; name: string; vcs?: string }>
 	readonly isSubagentsEnabledAndCliInstalled?: boolean
 	readonly isCliSubagent?: boolean
+	readonly isCliEnvironment?: boolean
 	readonly enableNativeToolCalls?: boolean
 	readonly enableParallelToolCalling?: boolean
 	readonly terminalExecutionMode?: "vscodeTerminal" | "backgroundExec"

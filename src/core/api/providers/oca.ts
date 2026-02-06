@@ -8,11 +8,12 @@ import {
 	OCI_HEADER_OPC_REQUEST_ID,
 } from "@/services/auth/oca/utils/constants"
 import { createOcaHeaders } from "@/services/auth/oca/utils/utils"
-import { Logger } from "@/services/logging/Logger"
+import { buildExternalBasicHeaders } from "@/services/EnvUtils"
 import { OcaModelInfo } from "@/shared/api"
 import { ClineStorageMessage } from "@/shared/messages/content"
 import { fetch } from "@/shared/net"
 import { ApiFormat } from "@/shared/proto/index.cline"
+import { Logger } from "@/shared/services/Logger"
 import { ApiHandler, type CommonApiHandlerOptions } from ".."
 import { withRetry } from "../retry"
 import { convertToOpenAiMessages } from "../transform/openai-format"
@@ -35,12 +36,14 @@ export interface OcaHandlerOptions extends CommonApiHandlerOptions {
 export class OcaHandler implements ApiHandler {
 	protected options: OcaHandlerOptions
 	protected client: OpenAI | undefined
+	protected externalHeaders: Record<string, string> = {}
 
 	constructor(options: OcaHandlerOptions) {
 		this.options = options
 	}
 
-	protected initializeClient(options: OcaHandlerOptions) {
+	protected initializeClient(options: OcaHandlerOptions): OpenAI {
+		const externalHeaders = buildExternalBasicHeaders()
 		return new (class OCIOpenAI extends OpenAI {
 			protected override async prepareOptions(opts: any): Promise<void> {
 				const token = await OcaAuthService.getInstance().getAuthToken()
@@ -50,7 +53,7 @@ export class OcaHandler implements ApiHandler {
 				opts.headers ??= {}
 				// OCA Headers
 				const ociHeaders = await createOcaHeaders(token, options.taskId!)
-				opts.headers = { ...opts.headers, ...ociHeaders }
+				opts.headers = { ...opts.headers, ...externalHeaders, ...ociHeaders }
 				Logger.log(`Making request with customer opc-request-id: ${opts.headers?.["opc-request-id"]}`)
 				return super.prepareOptions(opts)
 			}
@@ -113,12 +116,13 @@ export class OcaHandler implements ApiHandler {
 		if (!token) {
 			throw new OpenAIError("Unable to handle auth, Oracle Code Assist (OCA) access token is not available")
 		}
+		const externalHeaders = buildExternalBasicHeaders()
 		const ociHeaders = await createOcaHeaders(token, this.options.taskId!)
 		Logger.log(`Making calculate cost request with customer opc-request-id: ${ociHeaders["opc-request-id"]}`)
 		try {
 			const response = await fetch(`${client.baseURL}/spend/calculate`, {
 				method: "POST",
-				headers: ociHeaders,
+				headers: { ...externalHeaders, ...ociHeaders },
 				body: JSON.stringify({
 					completion_response: {
 						model: modelId,
@@ -134,11 +138,11 @@ export class OcaHandler implements ApiHandler {
 				const data: { cost: number } = await response.json()
 				return data.cost
 			} else {
-				console.error("Error calculating spend:", response.statusText)
+				Logger.error("Error calculating spend:", response.statusText)
 				return undefined
 			}
 		} catch (error) {
-			console.error("Error calculating spend:", error)
+			Logger.error("Error calculating spend:", error)
 			return undefined
 		}
 	}
@@ -241,7 +245,7 @@ export class OcaHandler implements ApiHandler {
 		const stream = await client.chat.completions.create(chatCompletionsParams)
 
 		for await (const chunk of stream) {
-			const delta = chunk.choices[0]?.delta
+			const delta = chunk.choices?.[0]?.delta
 
 			// Handle normal text content
 			if (delta?.content) {
@@ -303,7 +307,6 @@ export class OcaHandler implements ApiHandler {
 	}
 
 	async *createMessageResponsesApi(systemPrompt: string, messages: ClineStorageMessage[], tools?: OpenAITool[]): ApiStream {
-		console.log("Uses Responses API")
 		const client = this.ensureClient()
 
 		// Convert messages to Responses API input format
@@ -314,7 +317,7 @@ export class OcaHandler implements ApiHandler {
 
 		// Convert ChatCompletion tools to Responses API format if provided
 		const responseTools = tools
-			?.filter((tool) => tool.type === "function")
+			?.filter((tool) => tool?.type === "function")
 			.map((tool: any) => ({
 				type: "function" as const,
 				name: tool.function.name,

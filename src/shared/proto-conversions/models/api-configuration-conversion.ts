@@ -160,6 +160,7 @@ function convertLiteLLMModelInfoToProto(info: AppLiteLLMModelInfo | undefined): 
 		description: info.description,
 		tiers: info.tiers || [],
 		temperature: info.temperature,
+		supportsReasoning: info.supportsReasoning,
 	}
 }
 
@@ -183,6 +184,7 @@ function convertProtoToLiteLLMModelInfo(info: LiteLLMModelInfo | undefined): App
 		description: info.description,
 		tiers: info.tiers.length > 0 ? info.tiers : undefined,
 		temperature: info.temperature,
+		supportsReasoning: info.supportsReasoning,
 	}
 }
 
@@ -321,6 +323,8 @@ function convertApiProviderToProto(provider: string | undefined): ProtoApiProvid
 			return ProtoApiProvider.HICAP
 		case "nousResearch":
 			return ProtoApiProvider.NOUSRESEARCH
+		case "openai-codex":
+			return ProtoApiProvider.OPENAI_CODEX
 		default:
 			return ProtoApiProvider.ANTHROPIC
 	}
@@ -409,6 +413,8 @@ export function convertProtoToApiProvider(provider: ProtoApiProvider): ApiProvid
 			return "minimax"
 		case ProtoApiProvider.NOUSRESEARCH:
 			return "nousResearch"
+		case ProtoApiProvider.OPENAI_CODEX:
+			return "openai-codex"
 		default:
 			return "anthropic"
 	}
@@ -495,6 +501,7 @@ export function convertApiConfigurationToProto(config: ApiConfiguration): ProtoA
 		minimaxApiKey: config.minimaxApiKey,
 		minimaxApiLine: config.minimaxApiLine,
 		nousResearchApiKey: config.nousResearchApiKey,
+		clineApiKey: config.clineApiKey,
 		ocaMode: config.ocaMode,
 		aihubmixApiKey: config.aihubmixApiKey,
 		aihubmixBaseUrl: config.aihubmixBaseUrl,
@@ -675,6 +682,7 @@ export function convertProtoToApiConfiguration(protoConfig: ProtoApiConfiguratio
 		hicapApiKey: protoConfig.hicapApiKey,
 		hicapModelId: protoConfig.hicapModelId,
 		nousResearchApiKey: protoConfig.nousResearchApiKey,
+		clineApiKey: protoConfig.clineApiKey,
 
 		// Plan mode configurations
 		planModeApiProvider:

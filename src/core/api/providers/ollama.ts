@@ -1,11 +1,15 @@
 import { type ModelInfo, openAiModelInfoSaneDefaults } from "@shared/api"
 import { type Config, type Message, Ollama } from "ollama"
+import type { ChatCompletionTool } from "openai/resources/chat/completions"
+import { buildExternalBasicHeaders } from "@/services/EnvUtils"
 import { ClineStorageMessage } from "@/shared/messages/content"
 import { fetch } from "@/shared/net"
+import { Logger } from "@/shared/services/Logger"
 import type { ApiHandler, CommonApiHandlerOptions } from "../"
 import { withRetry } from "../retry"
 import { convertToOllamaMessages } from "../transform/ollama-format"
 import type { ApiStream } from "../transform/stream"
+import { ToolCallProcessor } from "../transform/tool-call-processor"
 
 interface OllamaHandlerOptions extends CommonApiHandlerOptions {
 	ollamaBaseUrl?: string
@@ -30,14 +34,17 @@ export class OllamaHandler implements ApiHandler {
 	private ensureClient(): Ollama {
 		if (!this.client) {
 			try {
+				const externalHeaders = buildExternalBasicHeaders()
 				const clientOptions: Partial<Config> = {
 					host: this.options.ollamaBaseUrl,
 					fetch,
+					headers: externalHeaders,
 				}
 
 				// Add API key if provided (for Ollama cloud or authenticated instances)
 				if (this.options.ollamaApiKey) {
 					clientOptions.headers = {
+						...clientOptions.headers,
 						Authorization: `Bearer ${this.options.ollamaApiKey}`,
 					}
 				}
@@ -51,7 +58,7 @@ export class OllamaHandler implements ApiHandler {
 	}
 
 	@withRetry({ retryAllErrors: true })
-	async *createMessage(systemPrompt: string, messages: ClineStorageMessage[]): ApiStream {
+	async *createMessage(systemPrompt: string, messages: ClineStorageMessage[], tools?: ChatCompletionTool[]): ApiStream {
 		const client = this.ensureClient()
 		const ollamaMessages: Message[] = [{ role: "system", content: systemPrompt }, ...convertToOllamaMessages(messages)]
 
@@ -81,7 +88,10 @@ export class OllamaHandler implements ApiHandler {
 				options: {
 					num_ctx: Number(this.options.ollamaApiOptionsCtxNum),
 				},
+				tools: tools as any,
 			})
+
+			const toolCallProcessor = new ToolCallProcessor()
 
 			// Race the API request against timeout and abort
 			const stream = (await Promise.race([apiPromise, timeoutPromise, abortPromise])) as Awaited<typeof apiPromise>
@@ -93,13 +103,34 @@ export class OllamaHandler implements ApiHandler {
 						throw new Error("Ollama request cancelled by user")
 					}
 
-					if (typeof chunk.message.content === "string") {
-						yield {
-							type: "text",
-							text: chunk.message.content,
-						}
+					Logger.debug("[OllamaHandler] Message Chunk" + JSON.stringify(chunk))
+
+					const delta = chunk.message
+
+					if (delta?.tool_calls) {
+						Logger.debug(`[OllamaHandler] Tool Calls Detected: ${JSON.stringify(delta.tool_calls)}`)
+						yield* toolCallProcessor.processToolCallDeltas(
+							delta.tool_calls?.map((tc, inx) => ({
+								index: inx,
+								id: `ollama-tool-${inx}`,
+								function: {
+									name: tc.function.name,
+									arguments:
+										typeof tc.function.arguments === "string"
+											? tc.function.arguments
+											: JSON.stringify(tc.function.arguments),
+								},
+								type: "function",
+							})),
+						)
 					}
 
+					if (typeof delta.content === "string") {
+						yield {
+							type: "text",
+							text: delta.content,
+						}
+					}
 					// Handle token usage if available
 					if (chunk.eval_count !== undefined || chunk.prompt_eval_count !== undefined) {
 						yield {
@@ -110,7 +141,7 @@ export class OllamaHandler implements ApiHandler {
 					}
 				}
 			} catch (streamError: any) {
-				console.error("Error processing Ollama stream:", streamError)
+				Logger.error("Error processing Ollama stream:", streamError)
 				throw new Error(`Ollama stream processing error: ${streamError.message || "Unknown error"}`)
 			}
 		} catch (error) {
@@ -130,7 +161,7 @@ export class OllamaHandler implements ApiHandler {
 			const statusCode = error.status || error.statusCode
 			const errorMessage = error.message || "Unknown error"
 
-			console.error(`Ollama API error (${statusCode || "unknown"}): ${errorMessage}`)
+			Logger.error(`Ollama API error (${statusCode || "unknown"}): ${errorMessage}`)
 			throw error
 		} finally {
 			// Clean up abort controller
