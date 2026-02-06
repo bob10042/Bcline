@@ -1,4 +1,5 @@
 import { workspaceResolver } from "@core/workspace"
+import type { Dirent } from "fs"
 import fs from "fs/promises"
 import * as path from "path"
 import { HostProvider } from "@/hosts/host-provider"
@@ -121,8 +122,10 @@ export const readDirectory = async (directoryPath: string, excludedPaths: string
 			.then((entries) => entries.filter((entry) => entry.isFile()))
 			.then((files) =>
 				files.map((file) => {
+					const recursiveDirent = file as Dirent & { parentPath?: string; path?: string }
+					const parentDirectory = recursiveDirent.parentPath ?? recursiveDirent.path ?? directoryPath
 					const resolvedPath = workspaceResolver.resolveWorkspacePath(
-						file.parentPath,
+						parentDirectory,
 						file.name,
 						"Utils.fs.readDirectory",
 					)

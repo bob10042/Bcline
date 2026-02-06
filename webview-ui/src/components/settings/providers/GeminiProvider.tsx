@@ -1,5 +1,5 @@
 import { geminiModels } from "@shared/api"
-import { Mode } from "@shared/storage/types"
+import type { Mode } from "@shared/storage/types"
 import { VSCodeDropdown, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { ApiKeyField } from "../common/ApiKeyField"
@@ -12,7 +12,10 @@ import { useApiConfigurationHandlers } from "../utils/useApiConfigurationHandler
 
 // Gemini models that support thinking/reasoning mode
 const SUPPORTED_THINKING_MODELS = [
+	"gemini-3-pro",
 	"gemini-3-pro-preview",
+	"gemini-3-flash",
+	"gemini-3-flash-preview",
 	"gemini-2.5-pro",
 	"gemini-2.5-flash",
 	"gemini-2.5-flash-lite-preview-06-17",
