@@ -1339,8 +1339,16 @@ export class Task {
 		let nextUserContent = userContent
 		let includeFileDetails = true
 		let noToolUseLoopCount = 0
+		let didEverUseTool = false
 		while (!this.taskState.abort) {
+			// Track if tools were used in this iteration by checking before and after
+			const toolCountBefore = this.taskState.assistantMessageContent.filter((b) => b.type === "tool_use").length
 			const didEndLoop = await this.recursivelyMakeClineRequests(nextUserContent, includeFileDetails)
+			const toolCountAfter = this.taskState.assistantMessageContent.filter((b) => b.type === "tool_use").length
+			if (toolCountAfter > toolCountBefore) {
+				didEverUseTool = true
+				noToolUseLoopCount = 0 // reset when tools are actively used
+			}
 			includeFileDetails = false // we only need file details the first time
 
 			//  The way this agentic loop works is that cline will be given a task that he then calls tools to complete. unless there's an attempt_completion call, we keep responding back to him with his tool's responses until he either attempt_completion or does not use anymore tools. If he does not use anymore tools, we ask him to consider if he's completed the task and then call attempt_completion, otherwise proceed with completing the task.
@@ -1353,10 +1361,11 @@ export class Task {
 			}
 			noToolUseLoopCount++
 
-			// If the model has responded without tool use twice in a row after having
-			// already made API requests (i.e. it did work), it likely finished but
-			// forgot to call attempt_completion. Auto-complete instead of silently looping.
-			if (noToolUseLoopCount >= 2 && this.taskState.apiRequestCount > 1) {
+			// Auto-complete when the model stops using tools and likely finished:
+			// - After 1 no-tool response if the model previously used tools (it did work, then summarized)
+			// - After 2 no-tool responses otherwise (model never used tools but made API requests)
+			const autoCompleteThreshold = didEverUseTool ? 1 : 2
+			if (noToolUseLoopCount >= autoCompleteThreshold && this.taskState.apiRequestCount > 1) {
 				// Extract the model's last text response to show the user
 				const lastTextBlock = [...this.taskState.assistantMessageContent]
 					.reverse()
